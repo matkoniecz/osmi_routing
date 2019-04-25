@@ -2,3 +2,4 @@ target/
 .*.swp
 .settings
 .project
+maven_repository/
