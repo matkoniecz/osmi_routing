@@ -1,3 +1,22 @@
+/*
+ *  © 2019 Geofabrik GmbH
+ *
+ *  This file is part of osmi_routing.
+ *
+ *  osmi_routing is free software: you can redistribute it and/or modify
+ *  it under the terms of the GNU General Public License as published by
+ *  the Free Software Foundation, either version 3 of the License.
+ *
+ *  osmi_routing is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ *  GNU General Public License for more details.
+ *
+ *  You should have received a copy of the GNU General Public License
+ *  along with osmi_simple_views. If not, see <http://www.gnu.org/licenses/>.
+ */
+
+
 package de.geofabrik.osmi_routing;
 
 import java.io.IOException;
@@ -44,10 +63,13 @@ public class GraphHopperSimple extends GraphHopperOSM {
     EncodingManager encodingManager;
     OsmIdAndNoExitStore nodeInfoStore;
     GeoJSONWriter writer;
+    NoExitHook hook;
 
     public GraphHopperSimple(String args[]) {
         super();
         outputFile = args[2];
+        nodeInfoStore = new OsmIdAndNoExitStore(getGraphHopperLocation());
+        hook = new NoExitHook(nodeInfoStore);
         setDataReaderFile(args[0]);
         setGraphHopperLocation(args[1]);
         setCHEnabled(false);
@@ -69,8 +91,6 @@ public class GraphHopperSimple extends GraphHopperOSM {
     @Override
     protected DataReader createReader(GraphHopperStorage ghStorage) {
         OSMReader reader = new OSMReader(ghStorage);
-        nodeInfoStore = new OsmIdAndNoExitStore(getGraphHopperLocation());
-        OSMReaderHook hook = new NoExitHook(reader, nodeInfoStore);
         reader.register(hook);
         return initDataReader(reader);
     }
