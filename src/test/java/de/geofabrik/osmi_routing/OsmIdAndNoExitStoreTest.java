@@ -25,7 +25,9 @@ public class OsmIdAndNoExitStoreTest {
         }
         for (int i = 0; i < osmIds.length; ++i) {
             long osmId = ext.getOsmId(i);
+            boolean noExit = ext.getNoExit(i);
             assertEquals(osmIds[i], osmId);
+            assertEquals(noExits[i], noExit);
         }
     }
 

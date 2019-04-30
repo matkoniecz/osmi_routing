@@ -88,7 +88,7 @@ public class OsmIdAndNoExitStore {
         checkNodeIdValid(osmNodeId);
         long toInsert = osmNodeId & 0x00FFFFFFFFFFFFFFl;
         if (hasNoExit) {
-            toInsert |= (0x01000000l << 32);
+            toInsert |= (1l << 63);
         }
         setLong(nodeId, toInsert);
         entriesCount = nodeId + 1;
@@ -117,7 +117,7 @@ public class OsmIdAndNoExitStore {
             // no entry for this node, return default
             return false;
         }
-        stored = stored >> (7 * 8);
-        return (stored & 0x01000000) == 0x01000000;
+        stored = stored >>> 63;
+        return stored == 1l;
     }
 }
