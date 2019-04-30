@@ -35,7 +35,10 @@ public class NoExitHook extends OSMReaderHook {
     }
 
     public void processNode(ReaderNode node) {
-        if (node.hasTag("noexit", "yes")) {
+        boolean noExit = node.hasTag("noexit", "yes");
+        String entranceValue = node.getTag("entrance");
+        noExit = noExit || (entranceValue != null && !entranceValue.equals("no"));
+        if (noExit) {
             noExitNodes.add(node.getId());
         }
     }
