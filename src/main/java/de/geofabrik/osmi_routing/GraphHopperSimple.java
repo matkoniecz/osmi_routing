@@ -30,7 +30,6 @@ import org.apache.logging.log4j.Logger;
 import com.graphhopper.reader.DataReader;
 import com.graphhopper.reader.osm.GraphHopperOSM;
 import com.graphhopper.reader.osm.OSMReader;
-import com.graphhopper.reader.osm.OSMReaderHook;
 import com.graphhopper.routing.AlgorithmOptions;
 import com.graphhopper.routing.Path;
 import com.graphhopper.routing.QueryGraph;
@@ -43,9 +42,11 @@ import com.graphhopper.routing.util.HintsMap;
 import com.graphhopper.routing.util.TraversalMode;
 import com.graphhopper.routing.weighting.Weighting;
 import com.graphhopper.storage.GraphHopperStorage;
+import com.graphhopper.storage.NodeAccess;
 import com.graphhopper.storage.index.LocationIndexTree;
 import com.graphhopper.storage.index.QueryResult;
 import com.graphhopper.storage.index.QueryResult.Position;
+import com.graphhopper.util.AngleCalc;
 import com.graphhopper.util.EdgeExplorer;
 import com.graphhopper.util.EdgeIterator;
 import com.graphhopper.util.EdgeIteratorState;
@@ -64,12 +65,14 @@ public class GraphHopperSimple extends GraphHopperOSM {
     OsmIdAndNoExitStore nodeInfoStore;
     GeoJSONWriter writer;
     NoExitHook hook;
+    AngleCalc angleCalc;
 
     public GraphHopperSimple(String args[]) {
         super();
         outputFile = args[2];
         nodeInfoStore = new OsmIdAndNoExitStore(getGraphHopperLocation());
         hook = new NoExitHook(nodeInfoStore);
+        angleCalc = new AngleCalc();
         setDataReaderFile(args[0]);
         setGraphHopperLocation(args[1]);
         setCHEnabled(false);
@@ -93,6 +96,112 @@ public class GraphHopperSimple extends GraphHopperOSM {
         OSMReader reader = new OSMReader(ghStorage);
         reader.register(hook);
         return initDataReader(reader);
+    }
+
+    /**
+     * Return the angle betweeen two edges with the given orientations (east-based, -180° to +180°).
+     *
+     * If matchPosition is QueryResult.Position.EDGE, the `180-result` is returned if it is
+     * smaller than the result. In all other cases, the unchanged difference of the angles
+     * is returned in order to allow the caller to take the orientation of the involved edges
+     * into account.
+     *
+     * @param angle1 in degrees
+     * @param angle2 in degrees
+     * @param matchPosition match type returned by QueryResult.getSnappedPosition
+     */
+    private static double normaliseAngle(double angle1, double angle2, QueryResult.Position matchPosition) {
+        if (matchPosition == QueryResult.Position.EDGE) {
+            double result = Math.max(angle1, angle2) - Math.min(angle1, angle2);
+            return Math.min(result, 180 - result);
+        }
+        return Math.max(angle1, angle2) - Math.min(angle1, angle2);
+    }
+
+    private double[] getAngleDiff(EdgeIteratorState openEnd, QueryResult matched) {
+        double[] result = {-720, 720};
+        QueryResult.Position matchType = matched.getSnappedPosition();
+        NodeAccess nodeAccess = getGraphHopperStorage().getNodeAccess();
+        // Get the two locations of the matched edge to calculate its orientation.
+        double matchedLat1 = Double.MAX_VALUE;
+        double matchedLon1 = Double.MAX_VALUE;
+        double matchedLat2 = matched.getSnappedPoint().getLat();
+        double matchedLon2 = matched.getSnappedPoint().getLon();
+        double matchedLat3 = Double.MAX_VALUE;
+        double matchedLon3 = Double.MAX_VALUE;
+        switch (matchType) {
+        case TOWER :
+            int wayIndex = matched.getWayIndex();
+            PointList points = matched.getClosestEdge().fetchWayGeometry(2);
+            if (wayIndex == 0) {
+                // index of PointList.toGHPoint() is 0 because the PointList is retrieved without the base node
+                matchedLat1 = points.getLat(0);
+                matchedLon1 = points.getLon(0);
+            } else {
+                matchedLat1 = points.getLat(points.size() - 1);
+                matchedLon1 = points.getLon(points.size() - 1);
+            }
+            break;
+        case EDGE:
+            PointList allPoints = matched.getClosestEdge().fetchWayGeometry(3);
+            boolean found = false;
+            for (int i = 0; i < allPoints.size() - 1; ++i) {
+                double minLat = Math.min(allPoints.getLat(i), allPoints.getLat(i + 1));
+                double maxLat = Math.max(allPoints.getLat(i), allPoints.getLat(i + 1));
+                double minLon = Math.min(allPoints.getLon(i), allPoints.getLon(i + 1));
+                double maxLon = Math.max(allPoints.getLon(i), allPoints.getLon(i + 1));
+                if (matched.getSnappedPoint().getLat() < minLat || matched.getSnappedPoint().getLat() > maxLat
+                        || matched.getSnappedPoint().getLon() < minLon || matched.getSnappedPoint().getLon() > maxLon) {
+                    continue;
+                }
+                // check if ration matches
+                double mExpected = (allPoints.getLat(i + 1) - allPoints.getLat(i)) / (allPoints.getLon(i + 1) - allPoints.getLon(i));
+                double mThis = (allPoints.getLat(i + 1) - matched.getSnappedPoint().getLat()) / (allPoints.getLon(i + 1) - matched.getSnappedPoint().getLon());
+                if (Math.abs(mExpected - mThis) < 0.00005) {
+                    found = true;
+                    matchedLat1 = allPoints.getLat(i);
+                    matchedLon1 = allPoints.getLon(i);
+                    matchedLat3 = allPoints.getLat(i + 1);
+                    matchedLon3 = allPoints.getLon(i + 1);
+                    break;
+                }
+            }
+            if (!found) {
+                long osmId = nodeInfoStore.getOsmId(openEnd.getBaseNode());
+                throw new IllegalStateException("Could not find a matching segment for OSM node " + Long.toString(osmId));
+            }
+            break;
+        case PILLAR:
+        default:
+            // The matched position is a pillar node.
+            // Get the two neighbouring nodes.
+            PointList pointsAll = matched.getClosestEdge().fetchWayGeometry(3);
+            matchedLat1 = pointsAll.getLat(matched.getWayIndex() - 1);
+            matchedLon1 = pointsAll.getLat(matched.getWayIndex() - 1);
+            matchedLat3 = pointsAll.getLat(matched.getWayIndex() + 1);
+            matchedLon3 = pointsAll.getLat(matched.getWayIndex() + 1);
+            break;
+        }
+        // Get the two locations of the open end edge to calculate its orientation.
+        double orientationMatched12 = angleCalc.calcOrientation(matchedLat1, matchedLon1, matchedLat2, matchedLon2, false);
+        double orientationMatched23 = angleCalc.calcOrientation(matchedLat2, matchedLon2, matchedLat3, matchedLon3, false);
+
+
+        double openEndLat1 = nodeAccess.getLat(openEnd.getBaseNode());
+        double openEndLon1 = nodeAccess.getLon(openEnd.getBaseNode());
+        PointList pointsAll = openEnd.fetchWayGeometry(2);
+        // index of PointList.toGHPoint() is 0 because the PointList is retrieved without the base node
+        double openEndLat2 = pointsAll.getLat(0);
+        double openEndLon2 = pointsAll.getLon(0);
+        double orientationOpenEnd = angleCalc.calcOrientation(openEndLat1, openEndLon1, openEndLat2, openEndLon2, false);
+        if (matchType != QueryResult.Position.PILLAR) {
+            result[0] = normaliseAngle(Math.toDegrees(orientationMatched12), Math.toDegrees(orientationOpenEnd), matchType);
+            result[1] = normaliseAngle(Math.toDegrees(orientationMatched12), Math.toDegrees(orientationOpenEnd), matchType);
+        } else {
+            result[0] = normaliseAngle(Math.toDegrees(orientationMatched12), Math.toDegrees(orientationOpenEnd), matchType);
+            result[1] = normaliseAngle(Math.toDegrees(orientationMatched23), Math.toDegrees(orientationOpenEnd), matchType);
+        }
+        return result;
     }
 
     private Double getDistanceOnGraph(int fromNodeId, GHPoint fromLocation, int toNodeId, GHPoint toLocation) {
@@ -186,6 +295,8 @@ public class GraphHopperSimple extends GraphHopperOSM {
         GHPoint queryPoint = null;
         GHPoint snappedPoint = null;
         int snapPointID = -1;
+        double[] angleDiff = {-720, -720};
+        String type = ""; 
         // iterate over results
         for (QueryResult r : result) {
             EdgeIteratorState foundEdge = r.getClosestEdge();
@@ -209,11 +320,19 @@ public class GraphHopperSimple extends GraphHopperOSM {
                 snapPointID = r.getClosestNode();
                 double distanceOnGraph = getDistanceOnGraph(id, queryPoint, snapPointID, snappedPoint);
                 networkBeelineRatio = Math.min(distanceOnGraph / distance, 2000);
+                angleDiff = getAngleDiff(firstEdge, r);
+                if (r.getSnappedPosition() == QueryResult.Position.PILLAR) {
+                    type = "pillar_match";
+                } else if (r.getSnappedPosition() == QueryResult.Position.TOWER) {
+                    type = "tower_match";
+                } else {
+                    type = "edge_match";
+                }
             }
         }
         if (snappedPoint != null) {
-            writer.write(queryPoint, "open end", "distance", distanceClosest, "node_id", id, "ratio", networkBeelineRatio, osmId);
-            writer.write(snappedPoint, "snap point", "node_id", snapPointID, "refersTo", id, "ratio", networkBeelineRatio, 0);
+            writer.write(queryPoint, "open end", "distance", distanceClosest, "node_id", id, "ratio", networkBeelineRatio, angleDiff[0], angleDiff[1], osmId);
+            writer.write(snappedPoint, type, "node_id", snapPointID, "refersTo", id, "ratio", networkBeelineRatio, angleDiff[0], angleDiff[1], 0);
         }
     }
 

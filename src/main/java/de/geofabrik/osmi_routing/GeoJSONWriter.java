@@ -43,13 +43,13 @@ public class GeoJSONWriter {
         this.writer.write(header);
     }
 
-    public void write(GHPoint point, String v1, String k2, double v2, String k3, int v3, String k4, double v4, long osmId) throws IOException {
+    public void write(GHPoint point, String v1, String k2, double v2, String k3, int v3, String k4, double v4, double v5, double v6, long osmId) throws IOException {
         String out = "";
         if (!firstFeature) {
             out = ",\n";
         }
         firstFeature = false;
-        out += String.format(locale, "{\"type\":\"Feature\",\"properties\":{\"type\": \"%s\", \"%s\": %.2f, \"%s\": %d, \"%s\": %.4f, \"osm_id\": %d},", v1, k2, v2, k3, v3, k4, v4, osmId);
+        out += String.format(locale, "{\"type\":\"Feature\",\"properties\":{\"type\": \"%s\", \"%s\": %.2f, \"%s\": %d, \"%s\": %.4f, \"angleD1\": %.1f, \"angleD2\": %.1f, \"osm_id\": %d},", v1, k2, v2, k3, v3, k4, v4, v5, v6, osmId);
         out += String.format(locale, " \"geometry\":{\"type\":\"Point\",\"coordinates\":[%.7f, %.7f]}}\n", point.lon, point.lat);
         writer.write(out);
     }
