@@ -144,7 +144,8 @@ public class GraphHopperSimple extends GraphHopperOSM {
             break;
         case EDGE:
             PointList allPoints = matched.getClosestEdge().fetchWayGeometry(3);
-            boolean found = false;
+            int matchingI = -1;
+            double mMin = Double.MAX_VALUE;
             for (int i = 0; i < allPoints.size() - 1; ++i) {
                 double minLat = Math.min(allPoints.getLat(i), allPoints.getLat(i + 1));
                 double maxLat = Math.max(allPoints.getLat(i), allPoints.getLat(i + 1));
@@ -157,7 +158,7 @@ public class GraphHopperSimple extends GraphHopperOSM {
                 double mExpected, mThis;
                 // Check if ratio matches
                 // First check if the matching edge segment goes straightly or almost straightly in north-south direction.
-                if (allPoints.getLon(i + 1) - allPoints.getLon(i) < 0.0000005) {
+                if (maxLon - minLon < 0.0000005) {
                     // almost north-south, work with inverse value: dx/dy
                     mExpected = (allPoints.getLon(i + 1) - allPoints.getLon(i)) / (allPoints.getLat(i + 1) - allPoints.getLat(i));
                     mThis = (allPoints.getLon(i + 1) - matched.getSnappedPoint().getLon()) / (allPoints.getLat(i + 1) - matched.getSnappedPoint().getLat());
@@ -166,16 +167,15 @@ public class GraphHopperSimple extends GraphHopperOSM {
                     mExpected = (allPoints.getLat(i + 1) - allPoints.getLat(i)) / (allPoints.getLon(i + 1) - allPoints.getLon(i));
                     mThis = (allPoints.getLat(i + 1) - matched.getSnappedPoint().getLat()) / (allPoints.getLon(i + 1) - matched.getSnappedPoint().getLon());
                 }
-                if (Math.abs(mExpected - mThis) < 0.00005) {
-                    found = true;
+                if (Math.abs(mExpected - mThis) < mMin) {
+                    matchingI = i;
                     matchedLat1 = allPoints.getLat(i);
                     matchedLon1 = allPoints.getLon(i);
                     matchedLat3 = allPoints.getLat(i + 1);
                     matchedLon3 = allPoints.getLon(i + 1);
-                    break;
                 }
             }
-            if (!found) {
+            if (matchingI < 0) {
                 long osmId = nodeInfoStore.getOsmId(openEnd.getBaseNode());
                 throw new IllegalStateException("Could not find a matching segment for OSM node " + Long.toString(osmId));
             }
