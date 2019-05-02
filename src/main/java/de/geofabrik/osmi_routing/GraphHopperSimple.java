@@ -154,9 +154,18 @@ public class GraphHopperSimple extends GraphHopperOSM {
                         || matched.getSnappedPoint().getLon() < minLon || matched.getSnappedPoint().getLon() > maxLon) {
                     continue;
                 }
-                // check if ration matches
-                double mExpected = (allPoints.getLat(i + 1) - allPoints.getLat(i)) / (allPoints.getLon(i + 1) - allPoints.getLon(i));
-                double mThis = (allPoints.getLat(i + 1) - matched.getSnappedPoint().getLat()) / (allPoints.getLon(i + 1) - matched.getSnappedPoint().getLon());
+                double mExpected, mThis;
+                // Check if ratio matches
+                // First check if the matching edge segment goes straightly or almost straightly in north-south direction.
+                if (allPoints.getLon(i + 1) - allPoints.getLon(i) < 0.0000005) {
+                    // almost north-south, work with inverse value: dx/dy
+                    mExpected = (allPoints.getLon(i + 1) - allPoints.getLon(i)) / (allPoints.getLat(i + 1) - allPoints.getLat(i));
+                    mThis = (allPoints.getLon(i + 1) - matched.getSnappedPoint().getLon()) / (allPoints.getLat(i + 1) - matched.getSnappedPoint().getLat());
+                } else {
+                    // all other cases: dy/dx
+                    mExpected = (allPoints.getLat(i + 1) - allPoints.getLat(i)) / (allPoints.getLon(i + 1) - allPoints.getLon(i));
+                    mThis = (allPoints.getLat(i + 1) - matched.getSnappedPoint().getLat()) / (allPoints.getLon(i + 1) - matched.getSnappedPoint().getLon());
+                }
                 if (Math.abs(mExpected - mThis) < 0.00005) {
                     found = true;
                     matchedLat1 = allPoints.getLat(i);
