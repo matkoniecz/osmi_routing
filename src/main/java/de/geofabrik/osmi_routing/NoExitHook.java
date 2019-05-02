@@ -18,6 +18,8 @@
 
 package de.geofabrik.osmi_routing;
 
+import org.openjdk.jol.info.GraphLayout;
+
 import com.carrotsearch.hppc.LongScatterSet;
 import com.carrotsearch.hppc.LongSet;
 import com.graphhopper.reader.ReaderNode;
@@ -41,6 +43,10 @@ public class NoExitHook extends OSMReaderHook {
         if (noExit) {
             noExitNodes.add(node.getId());
         }
+    }
+
+    public long usedMemory() {
+        return GraphLayout.parseInstance(this).totalSize();
     }
 
     public void addTowerNode(long osmId, double lat, double lon, double ele, int towerId) {

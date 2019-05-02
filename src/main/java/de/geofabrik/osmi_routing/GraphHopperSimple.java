@@ -346,6 +346,7 @@ public class GraphHopperSimple extends GraphHopperOSM {
     }
 
     private void lookForUnconnected() {
+        logger.info("OSM node ID and noexit caches consume {} MB.", hook.usedMemory() / (1024*1024));
         GraphHopperStorage storage = getGraphHopperStorage();
         int nodes = storage.getNodes();
         logger.info("Iterate over {} nodes and look for nearby nodes.", nodes);
