@@ -58,12 +58,14 @@ public class UnconnectedFinder {
     AllRoadsFlagEncoder encoder;
     String outputFile;
     GeoJSONWriter writer;
+    private double maxDistance;
     AngleCalc angleCalc;
 
-    public UnconnectedFinder(GraphHopperSimple hopper, AllRoadsFlagEncoder encoder, String outputFile) {
+    public UnconnectedFinder(GraphHopperSimple hopper, AllRoadsFlagEncoder encoder, String outputFile, double maxDistance) {
         this.hopper = hopper;
         this.encoder = encoder;
         this.outputFile = outputFile;
+        this.maxDistance = maxDistance;
         this.angleCalc = new AngleCalc();
     }
 
@@ -231,7 +233,7 @@ public class UnconnectedFinder {
             return;
         }
         EdgeIterator iter = explorer.setBaseNode(id);
-        
+
         // edge ID of the blind end node we are currently working on
         int blindEndEdgeId = -1;
         // number of edges connected with this node
@@ -249,7 +251,7 @@ public class UnconnectedFinder {
             // more than one edge leading to this node
             return;
         }
-        
+
         // Retrieve edges connected the only adjacent node because they are often matched by the
         // location index lookup but are usually false positives. We exclude them before we later
         // check their geometric distance on the graph.
@@ -264,7 +266,7 @@ public class UnconnectedFinder {
             }
         }
         // fetch edge geometry
-        List<QueryResult> result = index.findNClosest(fromPoints.getLat(0), fromPoints.getLon(0), EdgeFilter.ALL_EDGES, 20);
+        List<QueryResult> result = index.findNClosest(fromPoints.getLat(0), fromPoints.getLon(0), EdgeFilter.ALL_EDGES, maxDistance);
         // distance to closest accpeted match
         double distanceClosest = Double.MAX_VALUE;
         // ratio between distance over graph and beeline; ratios within the range (1.0,4.0) are

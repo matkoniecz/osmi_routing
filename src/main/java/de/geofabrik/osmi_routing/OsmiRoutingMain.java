@@ -32,8 +32,8 @@ public class OsmiRoutingMain {
     GraphHopperSimple hopper;
 
     public static void main(String[] args) {
-        if (args.length < 3) {
-            System.err.println("ERROR: too few arguments.\nUsage: PROGRAM_NAME INFILE TMP_DIR OUTFILE");
+        if (args.length < 3 || args.length > 4) {
+            System.err.println("ERROR: too few arguments.\nUsage: PROGRAM_NAME INFILE TMP_DIR OUTFILE [RADIUS]");
             System.exit(1);
         }
         GraphHopperSimple hopper = (GraphHopperSimple) new GraphHopperSimple(args).forServer();

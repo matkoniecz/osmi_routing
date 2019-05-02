@@ -51,7 +51,8 @@ public class GraphHopperSimple extends GraphHopperOSM {
         encoder = new AllRoadsFlagEncoder();
         encodingManager = EncodingManager.create(encoder);
         setEncodingManager(encodingManager);
-        unconnectedFinder = new UnconnectedFinder(this, encoder, args[2]);
+        double maxDistance = (args.length == 4) ? Double.parseDouble(args[3]) : 10;
+        unconnectedFinder = new UnconnectedFinder(this, encoder, args[2], maxDistance);
     }
 
     /**
