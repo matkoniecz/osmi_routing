@@ -28,7 +28,7 @@ public class OsmiRoutingMain {
     }
 
     static final Logger logger = LogManager.getLogger(OsmiRoutingMain.class.getName());
-    
+
     GraphHopperSimple hopper;
 
     public static void main(String[] args) {
