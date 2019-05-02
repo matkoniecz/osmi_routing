@@ -49,6 +49,13 @@ public class NoExitHook extends OSMReaderHook {
         return GraphLayout.parseInstance(this).totalSize();
     }
 
+    /**
+     * Release most memory allocated for noExitNodes.
+     */
+    public void releaseNoExitSet() {
+        noExitNodes.release();
+    }
+
     public void addTowerNode(long osmId, double lat, double lon, double ele, int towerId) {
         // Ensure that artifically created OSM IDs don't mess things up. They are a hack in
         // GraphHopper when handling barriers which split an edge.
