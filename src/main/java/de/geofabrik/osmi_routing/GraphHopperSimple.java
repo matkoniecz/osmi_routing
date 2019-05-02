@@ -353,7 +353,7 @@ public class GraphHopperSimple extends GraphHopperOSM {
         try {
             writer = new GeoJSONWriter(outputFile);
             for (int start = 0; start < nodes; start++) {
-                if (start % 10000 == 0) {
+                if (start % 100000 == 0) {
                     writer.flush();
                     logger.info("Detection of unconnected roads: {} of {}", start, nodes);
                 }
