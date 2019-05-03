@@ -24,6 +24,7 @@ import java.nio.charset.Charset;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.List;
 import java.util.Locale;
 
 import com.graphhopper.util.shapes.GHPoint;
@@ -41,6 +42,38 @@ public class GeoJSONWriter {
         this.writer = Files.newBufferedWriter(path, Charset.forName("UTF-8"));
         String header = "{\"type\":\"FeatureCollection\",\n\"features\":[\n";
         this.writer.write(header);
+    }
+    
+    public void write(List<MissingConnection> items) throws IOException {
+        for (MissingConnection item : items) {
+            write(item);
+        }
+    }
+    
+    public void write(MissingConnection m) throws IOException {
+        String out = "";
+        if (!firstFeature) {
+            out = ",\n";
+        }
+        firstFeature = false;
+        String matchType = "unkown";
+        switch (m.getMatchType()) {
+        case EDGE:
+            matchType = "edge";
+            break;
+        case PILLAR:
+            matchType = "pillar";
+            break;
+        case TOWER:
+            matchType = "tower";
+        }
+        out += String.format(locale, "{\"type\":\"Feature\",\"properties\":{\"type\": \"%s\", \"distance\": %.2f, \"ratio\": %.2f, \"angle2\": %.1f, \"angleD2\": %.1f, \"osm_id\": %d},",
+                matchType, m.getDistance(), m.getRatio(), m.getAngles()[0], m.getAngles()[1], m.getOsmId());
+        out += String.format(locale, " \"geometry\":{\"type\":\"Point\",\"coordinates\":[%.7f, %.7f]}},\n", m.getOpenEndPoint().lon, m.getOpenEndPoint().lat);
+        out += String.format(locale, "{\"type\":\"Feature\",\"properties\":{\"type\": \"snap point\", \"distance\": %.2f, \"ratio\": %.2f, \"angle2\": %.1f, \"angleD2\": %.1f, \"to_osm_id\": %d},",
+                m.getDistance(), m.getRatio(), m.getAngles()[0], m.getAngles()[1], m.getOsmId());
+        out += String.format(locale, " \"geometry\":{\"type\":\"Point\",\"coordinates\":[%.7f, %.7f]}}\n", m.getSnapPoint().lon, m.getSnapPoint().lat);
+        writer.write(out);
     }
 
     public void write(GHPoint point, String v1, String k2, double v2, String k3, int v3, String k4, double v4, double v5, double v6, long osmId) throws IOException {
@@ -65,55 +98,6 @@ public class GeoJSONWriter {
         writer.write(out);
     }
 
-//    public void write(GHPoint point, String... args) throws IOException {
-//        String out = "";
-//        if (!firstFeature) {
-//            out = ",\n";
-//        }
-//        firstFeature = false;
-//        out += String.format(locale, "{\"type\":\"Feature\",\"properties\":{");
-//        int c = 0;
-//        String cache = "";
-//        boolean first = true;
-//        for (String arg : args) {
-//            if (c % 2 == 1) {
-//                if (!first) {
-//                    out += ", ";
-//                }
-//                first = false;
-//                out += String.format("\"%s\": \"%s\"", cache, arg);
-//                cache = "";
-//            } else {
-//                cache = arg;
-//            }
-//            ++c;
-//        }
-//        out += String.format(locale, "}, \"geometry\":{\"type\":\"Point\",\"coordinates\":[%.7f, %.7f]}}\n", point.lon, point.lat);
-//        writer.write(out);
-//    }
-//
-//    public void write(PointList points, String type) throws IOException {
-//        String out = "";
-//        if (!firstFeature) {
-//            out = ",\n";
-//        }
-//        firstFeature = false;
-//        out += "{\"type\":\"Feature\",\"properties\":{\"type\": \"" + type
-//                + "\"}, \"geometry\":{\"type\":\"LineString\",\"coordinates\":[";
-//
-//        boolean firstPoint = true;
-//        for (Iterator<GHPoint3D> iterator = points.iterator(); iterator.hasNext();) {
-//            Double[] coords = iterator.next().toGeoJson();
-//            if (!firstPoint) {
-//                out += ",\n";
-//            }
-//            firstPoint = false;
-//            out += "[" + coords[0].toString() + "," + coords[1].toString() + "]";
-//        }
-//        out += "]}}\n";
-//        writer.write(out);
-//    }
-    
     public void flush() throws IOException {
         writer.flush();
     }
@@ -125,7 +109,7 @@ public class GeoJSONWriter {
         writer.close();
     }
 
-    public void finalized() throws IOException {
+    protected void finalize() throws IOException {
         close();
     }
 }

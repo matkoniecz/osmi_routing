@@ -33,14 +33,12 @@ public class OsmIdAndNoExitStore {
     private DataAccess nodesInfo;
     private int entryBytes = 8;
     private int entriesCount;
-    private ByteBuffer buffer;
 
     public OsmIdAndNoExitStore(String location) {
         this.entriesCount = 0;
         GHDirectory dir = new GHDirectory(location, DAType.RAM);
         this.nodesInfo = dir.find("node_info", DAType.RAM);
         this.nodesInfo.create(100000);
-        this.buffer = ByteBuffer.allocate(Long.BYTES);
         if (entriesCount > 0)
             throw new AssertionError("The nodes info storage must be initialized only once.");
     }
@@ -68,13 +66,13 @@ public class OsmIdAndNoExitStore {
     }
     
     private void setLong(int nodeId, long value) {
-        buffer.clear();
+        ByteBuffer buffer = ByteBuffer.allocate(Long.BYTES);
         buffer.putLong(value);
         nodesInfo.setBytes((long) nodeId  * entryBytes, buffer.array(), Long.BYTES);
     }
 
     private long getLong(int nodeId) {
-        buffer.clear();
+        ByteBuffer buffer = ByteBuffer.allocate(Long.BYTES);
         byte[] bytes = new byte[Long.BYTES];
         nodesInfo.getBytes((long) nodeId  * entryBytes, bytes, Long.BYTES);
         buffer.put(bytes);

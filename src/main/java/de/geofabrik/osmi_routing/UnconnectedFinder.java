@@ -19,6 +19,7 @@
 package de.geofabrik.osmi_routing;
 
 import java.io.IOException;
+import java.nio.BufferUnderflowException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -26,6 +27,7 @@ import java.util.List;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
+import com.graphhopper.reader.osm.pbf.PbfBlobDecoderListener;
 import com.graphhopper.routing.AlgorithmOptions;
 import com.graphhopper.routing.Path;
 import com.graphhopper.routing.QueryGraph;
@@ -37,6 +39,7 @@ import com.graphhopper.routing.util.TraversalMode;
 import com.graphhopper.routing.weighting.Weighting;
 import com.graphhopper.storage.GraphHopperStorage;
 import com.graphhopper.storage.NodeAccess;
+import com.graphhopper.storage.index.LocationIndex;
 import com.graphhopper.storage.index.LocationIndexTree;
 import com.graphhopper.storage.index.QueryResult;
 import com.graphhopper.storage.index.QueryResult.Position;
@@ -48,25 +51,39 @@ import com.graphhopper.util.Parameters;
 import com.graphhopper.util.PointList;
 import com.graphhopper.util.shapes.GHPoint;
 
-public class UnconnectedFinder {
+public class UnconnectedFinder implements Runnable {
 
     static final Logger logger = LogManager.getLogger(OsmiRoutingMain.class.getName());
 
     private GraphHopperSimple hopper;
     private GraphHopperStorage storage;
+    private LocationIndex index;
     OsmIdAndNoExitStore nodeInfoStore;
     AllRoadsFlagEncoder encoder;
-    String outputFile;
-    GeoJSONWriter writer;
     private double maxDistance;
     AngleCalc angleCalc;
+    private final OutputListener listener;
+    private List<MissingConnection> results;
+    private int startId;
+    private int count;
 
-    public UnconnectedFinder(GraphHopperSimple hopper, AllRoadsFlagEncoder encoder, String outputFile, double maxDistance) {
+    public UnconnectedFinder(GraphHopperSimple hopper, AllRoadsFlagEncoder encoder,
+            double maxDistance, GraphHopperStorage graphhopperStorage,
+            OsmIdAndNoExitStore infoStore, OutputListener listener, int start, int count) {
         this.hopper = hopper;
         this.encoder = encoder;
-        this.outputFile = outputFile;
         this.maxDistance = maxDistance;
         this.angleCalc = new AngleCalc();
+        this.storage = graphhopperStorage;
+        this.index = (LocationIndexTree) hopper.getLocationIndex();
+        this.nodeInfoStore = infoStore;
+        this.listener = listener;
+        this.startId = start;
+        this.count = count;
+    }
+    
+    public boolean ready() {
+        return startId != -1;
     }
 
     /**
@@ -89,7 +106,7 @@ public class UnconnectedFinder {
         return Math.max(angle1, angle2) - Math.min(angle1, angle2);
     }
 
-    private double[] getAngleDiff(EdgeIteratorState openEnd, QueryResult matched) {
+    private double[] getAngleDiff(EdgeIteratorState openEnd, QueryResult matched) throws IllegalStateException {
         double[] result = {-720, 720};
         QueryResult.Position matchType = matched.getSnappedPosition();
         NodeAccess nodeAccess = storage.getNodeAccess();
@@ -216,9 +233,8 @@ public class UnconnectedFinder {
         return tmpPathList.get(0).getDistance();
     }
 
-    private void checkNode(int id) throws IOException {
+    private void checkNode(int id) throws IOException, IllegalStateException {
         EdgeExplorer explorer = storage.createEdgeExplorer();
-        LocationIndexTree index = (LocationIndexTree) hopper.getLocationIndex();
         if (storage.isNodeRemoved(id)) {
             return;
         }
@@ -266,17 +282,10 @@ public class UnconnectedFinder {
             }
         }
         // fetch edge geometry
-        List<QueryResult> result = index.findNClosest(fromPoints.getLat(0), fromPoints.getLon(0), EdgeFilter.ALL_EDGES, maxDistance);
+        List<QueryResult> result = ((LocationIndexTree) index).findNClosest(fromPoints.getLat(0), fromPoints.getLon(0), EdgeFilter.ALL_EDGES, maxDistance);
         // distance to closest accpeted match
         double distanceClosest = Double.MAX_VALUE;
-        // ratio between distance over graph and beeline; ratios within the range (1.0,4.0) are
-        // an indicator for false positives.
-        double networkBeelineRatio = 0;
-        GHPoint queryPoint = null;
-        GHPoint snappedPoint = null;
-        int snapPointID = -1;
-        double[] angleDiff = {-720, -720};
-        String type = ""; 
+        QueryResult closestResult = null;
         // iterate over results
         for (QueryResult r : result) {
             EdgeIteratorState foundEdge = r.getClosestEdge();
@@ -295,51 +304,43 @@ public class UnconnectedFinder {
             double distance = r.getQueryDistance();
             if (distance > 0 && distance < distanceClosest) {
                 distanceClosest = distance;
-                queryPoint = r.getQueryPoint();
-                snappedPoint = r.getSnappedPoint();
-                snapPointID = r.getClosestNode();
-                double distanceOnGraph = getDistanceOnGraph(id, queryPoint, snapPointID, snappedPoint);
-                networkBeelineRatio = Math.min(distanceOnGraph / distance, 2000);
-                angleDiff = getAngleDiff(firstEdge, r);
-                if (r.getSnappedPosition() == QueryResult.Position.PILLAR) {
-                    type = "pillar_match";
-                } else if (r.getSnappedPosition() == QueryResult.Position.TOWER) {
-                    type = "tower_match";
-                } else {
-                    type = "edge_match";
-                }
+                closestResult = r;
             }
         }
-        if (snappedPoint != null) {
-            writer.write(queryPoint, "open end", "distance", distanceClosest, "node_id", id, "ratio", networkBeelineRatio, angleDiff[0], angleDiff[1], osmId);
-            writer.write(snappedPoint, type, "node_id", snapPointID, "refersTo", id, "ratio", networkBeelineRatio, angleDiff[0], angleDiff[1], 0);
+        if (distanceClosest == Double.MAX_VALUE) {
+            return;
         }
+        // ratio between distance over graph and beeline; ratios within the range (1.0,4.0) are
+        // an indicator for false positives.
+        double distanceOnGraph = getDistanceOnGraph(id, closestResult.getQueryPoint(), closestResult.getClosestNode(), closestResult.getSnappedPoint());
+        GHPoint queryPoint = closestResult.getQueryPoint();
+        GHPoint snappedPoint = closestResult.getSnappedPoint();
+        double[] angleDiff = getAngleDiff(firstEdge, closestResult);
+        results.add(new MissingConnection(queryPoint, snappedPoint, distanceClosest, distanceOnGraph, id, angleDiff, osmId, closestResult.getSnappedPosition()));
     }
 
-    public void init(GraphHopperStorage graphhopperStorage, OsmIdAndNoExitStore infoStore) {
-        this.storage = graphhopperStorage;
-        this.nodeInfoStore = infoStore;
-    }
-
-    public void run() {
-        int nodes = storage.getNodes();
-        logger.info("Iterate over {} nodes and look for nearby nodes.", nodes);
+    private void runAndCatchExceptions() {
         try {
-            writer = new GeoJSONWriter(outputFile);
-            for (int start = 0; start < nodes; start++) {
-                if (start % 100000 == 0) {
-                    writer.flush();
-                    logger.info("Detection of unconnected roads: {} of {}", start, nodes);
-                }
-                checkNode(start);
+            for (int nodeId = startId; nodeId < startId + count; ++nodeId) {
+                checkNode(nodeId);
             }
-            writer.close();
         } catch (IOException e) {
-            logger.fatal("error opening output file");
-            System.exit(1);
+            throw new RuntimeException("Unable to read internal data", e);
+        } catch (Exception e) {
+            throw new RuntimeException("Unable to find closest edge although there should be one.", e);
         }
-        logger.info("finished writing");
-        
+    }
+
+    @Override
+    public void run() {
+        results = new ArrayList<MissingConnection>();
+        try {
+            runAndCatchExceptions();
+            listener.complete(results);
+
+        } catch (RuntimeException e) {
+            listener.error(e);
+        }
     }
 
 }

@@ -19,6 +19,8 @@
 
 package de.geofabrik.osmi_routing;
 
+import java.io.IOException;
+
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -37,7 +39,7 @@ public class GraphHopperSimple extends GraphHopperOSM {
     EncodingManager encodingManager;
     OsmIdAndNoExitStore nodeInfoStore;
     NoExitHook hook;
-    UnconnectedFinder unconnectedFinder;
+    UnconnectedFinderManager unconnectedFinderManager;
 
     public GraphHopperSimple(String args[]) {
         super();
@@ -51,8 +53,14 @@ public class GraphHopperSimple extends GraphHopperOSM {
         encoder = new AllRoadsFlagEncoder();
         encodingManager = EncodingManager.create(encoder);
         setEncodingManager(encodingManager);
-        double maxDistance = (args.length == 4) ? Double.parseDouble(args[3]) : 10;
-        unconnectedFinder = new UnconnectedFinder(this, encoder, args[2], maxDistance);
+        double maxDistance = (args.length >= 4) ? Double.parseDouble(args[3]) : 10;
+        int workers = (args.length == 5) ? Integer.parseInt(args[4]) : 2;
+        try {
+            unconnectedFinderManager = new UnconnectedFinderManager(this, encoder, args[2], maxDistance, workers);
+        } catch (IOException e) {
+            logger.fatal(e);
+            e.printStackTrace();
+        }
     }
 
     /**
@@ -74,8 +82,8 @@ public class GraphHopperSimple extends GraphHopperOSM {
         importOrLoad();
         logger.info("OSM node ID and noexit caches consume {} MB.", hook.usedMemory() / (1024*1024));
         hook.releaseNoExitSet();
-        unconnectedFinder.init(getGraphHopperStorage(), nodeInfoStore);
-        unconnectedFinder.run();
+        unconnectedFinderManager.init(getGraphHopperStorage(), nodeInfoStore);
+        unconnectedFinderManager.run();
         close();
     }
 }
