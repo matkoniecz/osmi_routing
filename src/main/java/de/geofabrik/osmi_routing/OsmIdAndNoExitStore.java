@@ -29,18 +29,25 @@ public class OsmIdAndNoExitStore {
     private int NO_ENTRY = -1;
     // The size of the OSM ID is reduced from 64 to 56 bits to have space for one extra bit for the noexit=yes state.
     private final int OSM_ID_BYTES = 7;
+    private final int BUFFER_SIZE = Long.BYTES;
     
     private DataAccess nodesInfo;
     private int entryBytes = 8;
     private int entriesCount;
+    private ByteBuffer inputByteBuffer;
 
     public OsmIdAndNoExitStore(String location) {
         this.entriesCount = 0;
         GHDirectory dir = new GHDirectory(location, DAType.RAM);
         this.nodesInfo = dir.find("node_info", DAType.RAM);
         this.nodesInfo.create(100000);
+        this.inputByteBuffer = ByteBuffer.allocate(BUFFER_SIZE);
         if (entriesCount > 0)
             throw new AssertionError("The nodes info storage must be initialized only once.");
+    }
+
+    public int getBufferSize() {
+        return BUFFER_SIZE;
     }
 
     public void close() {
@@ -66,21 +73,30 @@ public class OsmIdAndNoExitStore {
     }
     
     private void setLong(int nodeId, long value) {
-        ByteBuffer buffer = ByteBuffer.allocate(Long.BYTES);
-        buffer.putLong(value);
-        nodesInfo.setBytes((long) nodeId  * entryBytes, buffer.array(), Long.BYTES);
+        inputByteBuffer.clear();
+        inputByteBuffer.putLong(value);
+        nodesInfo.setBytes((long) nodeId  * entryBytes, inputByteBuffer.array(), BUFFER_SIZE);
     }
 
-    private long getLong(int nodeId) {
-        ByteBuffer buffer = ByteBuffer.allocate(Long.BYTES);
-        byte[] bytes = new byte[Long.BYTES];
-        nodesInfo.getBytes((long) nodeId  * entryBytes, bytes, Long.BYTES);
+    private long getLong(int nodeId, ByteBuffer buffer) {
+        byte[] bytes = new byte[BUFFER_SIZE];
+        nodesInfo.getBytes((long) nodeId  * entryBytes, bytes, BUFFER_SIZE);
+        buffer.clear();
         buffer.put(bytes);
         buffer.flip();
         long result = buffer.getLong();
         return result;
     }
 
+    /**
+     * Add a OSM node ID and its noexit/entrance status to the data store.
+     * 
+     * This method is not thread safe!
+     * 
+     * @param nodeId internal node ID
+     * @param osmNodeId OSM node ID
+     * @param hasNoExit boolean value to store
+     */
     public void addNodeInfo(int nodeId, long osmNodeId, boolean hasNoExit) {
         ensureCapacity(nodeId);
         checkNodeIdValid(osmNodeId);
@@ -92,12 +108,12 @@ public class OsmIdAndNoExitStore {
         entriesCount = nodeId + 1;
     }
 
-    public long getOsmId(int nodeId) {
+    long getOsmId(int nodeId, ByteBuffer buffer) {
         if (nodeId == -1) {
             // no entry for this node
             return -1;
         }
-        long osmId = getLong(nodeId);
+        long osmId = getLong(nodeId, buffer);
         if (osmId == -1) {
             return osmId;
         }
@@ -105,17 +121,25 @@ public class OsmIdAndNoExitStore {
         return osmId;
     }
 
-    public boolean getNoExit(int nodeId) {
+    public long getOsmId(int nodeId) {
+        return getOsmId(nodeId, inputByteBuffer);
+    }
+
+    boolean getNoExit(int nodeId, ByteBuffer buffer) {
         if (nodeId == -1) {
             // no entry for this node
             return false;
         }
-        long stored = getLong(nodeId);
+        long stored = getLong(nodeId, inputByteBuffer);
         if (stored == -1) {
             // no entry for this node, return default
             return false;
         }
         stored = stored >>> 63;
         return stored == 1l;
+    }
+
+    public boolean getNoExit(int nodeId) {
+        return getNoExit(nodeId, inputByteBuffer);
     }
 }

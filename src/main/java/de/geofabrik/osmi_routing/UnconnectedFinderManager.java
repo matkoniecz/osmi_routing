@@ -1,6 +1,10 @@
 /*
  *  © 2019 Geofabrik GmbH
  *
+ *  Multithreading implementation is inspired by GraphHopper and Osmosis.
+ *  Copyright 2012 - 2017 GraphHopper GmbH, licensed unter Apache License
+ *  version 2.
+ *
  *  This file is part of osmi_routing.
  *
  *  osmi_routing is free software: you can redistribute it and/or modify
@@ -151,7 +155,9 @@ public class UnconnectedFinderManager {
                     }
                 };
                 
-                UnconnectedFinder f = new UnconnectedFinder(hopper, encoder, maxDistance, storage, nodeInfoStore, listener, startId, count);
+                UnconnectedFinder f = new UnconnectedFinder(hopper, encoder, maxDistance, storage,
+                        new ThreadSafeOsmIdNoExitStoreAccessor(nodeInfoStore), listener, startId,
+                        count);
                 executorService.execute(f);
                 sendResultsToSink(threadCount - 1);
                 lastStartId = startId;

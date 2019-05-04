@@ -58,7 +58,7 @@ public class UnconnectedFinder implements Runnable {
     private GraphHopperSimple hopper;
     private GraphHopperStorage storage;
     private LocationIndex index;
-    OsmIdAndNoExitStore nodeInfoStore;
+    ThreadSafeOsmIdNoExitStoreAccessor nodeInfoStore;
     AllRoadsFlagEncoder encoder;
     private double maxDistance;
     AngleCalc angleCalc;
@@ -69,7 +69,7 @@ public class UnconnectedFinder implements Runnable {
 
     public UnconnectedFinder(GraphHopperSimple hopper, AllRoadsFlagEncoder encoder,
             double maxDistance, GraphHopperStorage graphhopperStorage,
-            OsmIdAndNoExitStore infoStore, OutputListener listener, int start, int count) {
+            ThreadSafeOsmIdNoExitStoreAccessor infoStore, OutputListener listener, int start, int count) {
         this.hopper = hopper;
         this.encoder = encoder;
         this.maxDistance = maxDistance;
