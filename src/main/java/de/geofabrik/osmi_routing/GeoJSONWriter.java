@@ -42,7 +42,6 @@ public class GeoJSONWriter {
     private DecimalFormat df2;
     private DecimalFormat df7;
     boolean firstFeature = true;
-    private StringBuilder pointSB;
 
     public GeoJSONWriter(Path path) throws IOException {
         this.writer = Files.newBufferedWriter(path, Charset.forName("UTF-8"));
