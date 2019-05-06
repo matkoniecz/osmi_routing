@@ -130,7 +130,7 @@ public class OsmIdAndNoExitStore {
             // no entry for this node
             return false;
         }
-        long stored = getLong(nodeId, inputByteBuffer);
+        long stored = getLong(nodeId, buffer);
         if (stored == -1) {
             // no entry for this node, return default
             return false;
