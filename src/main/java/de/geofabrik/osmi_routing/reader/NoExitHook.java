@@ -16,7 +16,7 @@
  *  along with osmi_simple_views. If not, see <http://www.gnu.org/licenses/>.
  */
 
-package de.geofabrik.osmi_routing;
+package de.geofabrik.osmi_routing.reader;
 
 import org.openjdk.jol.info.GraphLayout;
 
@@ -25,6 +25,8 @@ import com.carrotsearch.hppc.LongSet;
 import com.graphhopper.reader.ReaderNode;
 import com.graphhopper.reader.osm.OSMReader;
 import com.graphhopper.reader.osm.OSMReaderHook;
+
+import de.geofabrik.osmi_routing.OsmIdAndNoExitStore;
 
 public class NoExitHook extends OSMReaderHook {
 
