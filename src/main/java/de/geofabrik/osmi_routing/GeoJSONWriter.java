@@ -23,7 +23,8 @@ import java.io.IOException;
 import java.nio.charset.Charset;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.Paths;
+import java.text.DecimalFormat;
+import java.text.DecimalFormatSymbols;
 import java.util.List;
 import java.util.Locale;
 
@@ -35,15 +36,22 @@ import de.geofabrik.osmi_routing.subnetworks.RemoveAndDumpSubnetworks;
 public class GeoJSONWriter {
     private BufferedWriter writer;
 //    private DataOutputStream outStream;
-//    private BufferedWriter bw;
 //    private PrintWriter out;
-    private Locale locale = new Locale("en-US");
+    private DecimalFormatSymbols decimalFormatSymbols;
+    private DecimalFormat df1;
+    private DecimalFormat df2;
+    private DecimalFormat df7;
     boolean firstFeature = true;
+    private StringBuilder pointSB;
 
     public GeoJSONWriter(Path path) throws IOException {
         this.writer = Files.newBufferedWriter(path, Charset.forName("UTF-8"));
         String header = "{\"type\":\"FeatureCollection\",\n\"features\":[\n";
         this.writer.write(header);
+        decimalFormatSymbols = new DecimalFormatSymbols(new Locale("en-US"));
+        df1 = new DecimalFormat("#.#", decimalFormatSymbols);
+        df2 = new DecimalFormat("#.##", decimalFormatSymbols);
+        df7 = new DecimalFormat("#.#######", decimalFormatSymbols);
     }
     
     public void write(List<MissingConnection> items) throws IOException {
@@ -53,9 +61,9 @@ public class GeoJSONWriter {
     }
     
     public void write(MissingConnection m) throws IOException {
-        String out = "";
+        StringBuilder out = new StringBuilder(430);
         if (!firstFeature) {
-            out = ",\n";
+            out.append(",\n");
         }
         firstFeature = false;
         String matchType = "unkown";
@@ -69,35 +77,42 @@ public class GeoJSONWriter {
         case TOWER:
             matchType = "tower";
         }
-        out += String.format(locale, "{\"type\":\"Feature\",\"properties\":{\"type\": \"%s\", \"distance\": %.2f, \"ratio\": %.2f, \"angle2\": %.1f, \"angleD2\": %.1f, \"osm_id\": %d},",
-                matchType, m.getDistance(), m.getRatio(), m.getAngles()[0], m.getAngles()[1], m.getOsmId());
-        out += String.format(locale, " \"geometry\":{\"type\":\"Point\",\"coordinates\":[%.7f, %.7f]}},\n", m.getOpenEndPoint().lon, m.getOpenEndPoint().lat);
-        out += String.format(locale, "{\"type\":\"Feature\",\"properties\":{\"type\": \"snap point\", \"distance\": %.2f, \"ratio\": %.2f, \"angle2\": %.1f, \"angleD2\": %.1f, \"to_osm_id\": %d},",
-                m.getDistance(), m.getRatio(), m.getAngles()[0], m.getAngles()[1], m.getOsmId());
-        out += String.format(locale, " \"geometry\":{\"type\":\"Point\",\"coordinates\":[%.7f, %.7f]}}\n", m.getSnapPoint().lon, m.getSnapPoint().lat);
-        writer.write(out);
-    }
+        out.append("{\"type\":\"Feature\",\"properties\":{\"type\": \"");
+        out.append(matchType);
+        out.append("\", \"distance\": ");
+        out.append(df2.format(m.getDistance()));
+        out.append(", \"ratio\": ");
+        out.append(df2.format(m.getRatio()));
+        out.append(", \"angle1\": ");
+        out.append(df1.format(m.getAngles()[0]));
+        out.append(", \"angle2\": ");
+        out.append(df1.format(m.getAngles()[1]));
+        out.append(", \"osm_id\": ");
+        out.append(m.getOsmId());
+        out.append("},");
+        out.append(" \"geometry\":{\"type\":\"Point\",\"coordinates\":[");
+        out.append(df7.format(m.getOpenEndPoint().lon));
+        out.append(", ");
+        out.append(df7.format(m.getOpenEndPoint().lat));
+        out.append("]}},\n");
 
-    public void write(GHPoint point, String v1, String k2, double v2, String k3, int v3, String k4, double v4, double v5, double v6, long osmId) throws IOException {
-        String out = "";
-        if (!firstFeature) {
-            out = ",\n";
-        }
-        firstFeature = false;
-        out += String.format(locale, "{\"type\":\"Feature\",\"properties\":{\"type\": \"%s\", \"%s\": %.2f, \"%s\": %d, \"%s\": %.4f, \"angleD1\": %.1f, \"angleD2\": %.1f, \"osm_id\": %d},", v1, k2, v2, k3, v3, k4, v4, v5, v6, osmId);
-        out += String.format(locale, " \"geometry\":{\"type\":\"Point\",\"coordinates\":[%.7f, %.7f]}}\n", point.lon, point.lat);
-        writer.write(out);
-    }
+        out.append("{\"type\":\"Feature\",\"properties\":{\"type\": \"snap point\", \"distance\": ");
+        out.append(df2.format(m.getDistance()));
+        out.append(", \"ratio\": ");
+        out.append(df2.format(m.getRatio()));
+        out.append(", \"angle1\": ");
+        out.append(df1.format(m.getAngles()[0]));
+        out.append(", \"angle2\": ");
+        out.append(df1.format(m.getAngles()[1]));
+        out.append("},");
+        out.append(" \"geometry\":{\"type\":\"Point\",\"coordinates\":[");
+        out.append(df7.format(m.getSnapPoint().lon));
+        out.append(", ");
+        out.append(df7.format(m.getSnapPoint().lat));
+        out.append("]}}");
 
-    public void write(GHPoint point, String v1, String k2, int v2, String k3, int v3, String k4, double v4) throws IOException {
-        String out = "";
-        if (!firstFeature) {
-            out = ",\n";
-        }
-        firstFeature = false;
-        out += String.format(locale, "{\"type\":\"Feature\",\"properties\":{\"type\": \"%s\", \"%s\": %d, \"%s\": %d, \"%s\": %.4f},", v1, k2, v2, k3, v3, k4, v4);
-        out += String.format(locale, " \"geometry\":{\"type\":\"Point\",\"coordinates\":[%.7f, %.7f]}}\n", point.lon, point.lat);
-        writer.write(out);
+        writer.write(out.toString());
+        out.setLength(0);
     }
 
     public void flush() throws IOException {
@@ -115,29 +130,36 @@ public class GeoJSONWriter {
     }
 
     public void writeEdge(PointList geom, RemoveAndDumpSubnetworks.SubnetworkType type) throws IOException {
-        String out = "";
+        StringBuilder out = new StringBuilder(900);
         if (!firstFeature) {
-            out = ",\n";
+            out.append(",\n");
         }
         firstFeature = false;
-        String typeStr = "undefined";
+
+        out.append("{\"type\":\"Feature\",\"properties\":{\"type\": \"");
+
         if (type == RemoveAndDumpSubnetworks.SubnetworkType.ISLAND) {
-            typeStr = "island";
+            out.append("island");
+        } else if (type == RemoveAndDumpSubnetworks.SubnetworkType.SINK_SOURCE) {
+            out.append("sink_or_source");
+        } else {
+            out.append("undefined");
         }
-        if (type == RemoveAndDumpSubnetworks.SubnetworkType.SINK_SOURCE) {
-            typeStr = "sink_or_source";
-        }
-        out += String.format(locale, "{\"type\":\"Feature\",\"properties\":{\"type\": \"%s\"},", typeStr);
-        out += " \"geometry\":{\"type\":\"LineString\",\"coordinates\":[";
+
+        out.append("\"}, \"geometry\":{\"type\":\"LineString\",\"coordinates\":[");
         boolean firstPoint = true;
         for (GHPoint p : geom) {
             if (!firstPoint) {
-                out += ",";
+                out.append(",");
             }
             firstPoint = false;
-            out += String.format(locale, "[%.7f, %.7f]\n", p.getLon(), p.getLat());
+            out.append('[');
+            out.append(df7.format(p.getLon()));
+            out.append(", ");
+            out.append(df7.format(p.getLat()));
+            out.append(']');
         }
-        out += "]}}\n";
-        writer.write(out);
+        out.append("]}}\n");
+        writer.write(out.toString());
     }
 }
