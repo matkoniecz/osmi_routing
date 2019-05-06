@@ -118,11 +118,14 @@ public class UnconnectedFinderManager {
         
         public void process() {
             int nodes = storage.getNodes();
-            int lastStartId = -1;
-            final int logInterval = 100000;
+            int lastLogId = 0;
+            final int logInterval = nodes / 8;
+            logger.info("Detection of unconnected roads: 0 of {}", nodes);
+            increment = 1000;
             for (int startId = 0; startId < nodes; startId += increment) {
-                if ((startId % logInterval != lastStartId % logInterval) && (startId / logInterval != startId / logInterval)) {
+                if (lastLogId + logInterval < startId) {
                     logger.info("Detection of unconnected roads: {} of {}", startId, nodes);
+                    lastLogId = startId;
                 }
                 int count = increment;
                 if (startId + count > nodes) {
@@ -161,7 +164,6 @@ public class UnconnectedFinderManager {
                         count);
                 executorService.execute(f);
                 sendResultsToSink(threadCount - 1);
-                lastStartId = startId;
             }
             sendResultsToSink(0);
             try {
