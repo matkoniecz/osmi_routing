@@ -23,6 +23,7 @@
 package de.geofabrik.osmi_routing;
 
 import java.io.IOException;
+import java.nio.file.Path;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Queue;
@@ -59,10 +60,10 @@ public class UnconnectedFinderManager {
         private int threadCount;
         private int increment = 100000;
 
-        public UnconnectedFinderManager(GraphHopperSimple hopper, AllRoadsFlagEncoder encoder, String outputFile, double maxDistance, int workers) throws IOException {
+        public UnconnectedFinderManager(GraphHopperSimple hopper, AllRoadsFlagEncoder encoder, Path outputPath, double maxDistance, int workers) throws IOException {
             this.hopper = hopper;
             this.encoder = encoder;
-            this.writer = new GeoJSONWriter(outputFile);
+            this.writer = new GeoJSONWriter(outputPath);
             this.maxDistance = maxDistance;
             this.angleCalc = new AngleCalc();
 
@@ -163,11 +164,15 @@ public class UnconnectedFinderManager {
                 lastStartId = startId;
             }
             sendResultsToSink(0);
+            try {
+                writer.close();
+            } catch (IOException e) {
+                logger.fatal(e);
+                System.exit(1);
+            }
             logger.info("finished writing");
             // (Re-)Cancel if current thread also interrupted
             executorService.shutdownNow();
-            // Preserve interrupt status
-            Thread.currentThread().interrupt();
         }
 
         public void run() {

@@ -27,7 +27,10 @@ import java.nio.file.Paths;
 import java.util.List;
 import java.util.Locale;
 
+import com.graphhopper.util.PointList;
 import com.graphhopper.util.shapes.GHPoint;
+
+import de.geofabrik.osmi_routing.subnetworks.RemoveAndDumpSubnetworks;
 
 public class GeoJSONWriter {
     private BufferedWriter writer;
@@ -37,8 +40,7 @@ public class GeoJSONWriter {
     private Locale locale = new Locale("en-US");
     boolean firstFeature = true;
 
-    public GeoJSONWriter(String filename) throws IOException {
-        Path path = Paths.get(filename);
+    public GeoJSONWriter(Path path) throws IOException {
         this.writer = Files.newBufferedWriter(path, Charset.forName("UTF-8"));
         String header = "{\"type\":\"FeatureCollection\",\n\"features\":[\n";
         this.writer.write(header);
@@ -103,13 +105,39 @@ public class GeoJSONWriter {
     }
 
     public void close() throws IOException {
-        String out ="]}\n";
-        writer.write(out);
+        writer.write("]}\n");
         flush();
         writer.close();
     }
 
     protected void finalize() throws IOException {
         close();
+    }
+
+    public void writeEdge(PointList geom, RemoveAndDumpSubnetworks.SubnetworkType type) throws IOException {
+        String out = "";
+        if (!firstFeature) {
+            out = ",\n";
+        }
+        firstFeature = false;
+        String typeStr = "undefined";
+        if (type == RemoveAndDumpSubnetworks.SubnetworkType.ISLAND) {
+            typeStr = "island";
+        }
+        if (type == RemoveAndDumpSubnetworks.SubnetworkType.SINK_SOURCE) {
+            typeStr = "sink_or_source";
+        }
+        out += String.format(locale, "{\"type\":\"Feature\",\"properties\":{\"type\": \"%s\"},", typeStr);
+        out += " \"geometry\":{\"type\":\"LineString\",\"coordinates\":[";
+        boolean firstPoint = true;
+        for (GHPoint p : geom) {
+            if (!firstPoint) {
+                out += ",";
+            }
+            firstPoint = false;
+            out += String.format(locale, "[%.7f, %.7f]\n", p.getLon(), p.getLat());
+        }
+        out += "]}}\n";
+        writer.write(out);
     }
 }

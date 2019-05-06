@@ -20,6 +20,7 @@
 package de.geofabrik.osmi_routing;
 
 import java.io.IOException;
+import java.nio.file.Paths;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -29,6 +30,9 @@ import com.graphhopper.reader.osm.GraphHopperOSM;
 import com.graphhopper.reader.osm.OSMReader;
 import com.graphhopper.routing.util.EncodingManager;
 import com.graphhopper.storage.GraphHopperStorage;
+import com.graphhopper.util.Helper;
+
+import de.geofabrik.osmi_routing.subnetworks.RemoveAndDumpSubnetworks;
 
 
 public class GraphHopperSimple extends GraphHopperOSM {
@@ -39,9 +43,10 @@ public class GraphHopperSimple extends GraphHopperOSM {
     EncodingManager encodingManager;
     OsmIdAndNoExitStore nodeInfoStore;
     NoExitHook hook;
+    String outputDirectory;
     UnconnectedFinderManager unconnectedFinderManager;
 
-    public GraphHopperSimple(String args[]) {
+    public GraphHopperSimple(String args[]) throws IOException {
         super();
         nodeInfoStore = new OsmIdAndNoExitStore(getGraphHopperLocation());
         hook = new NoExitHook(nodeInfoStore);
@@ -52,11 +57,13 @@ public class GraphHopperSimple extends GraphHopperOSM {
         setSortGraph(false);
         encoder = new AllRoadsFlagEncoder();
         encodingManager = EncodingManager.create(encoder);
+        outputDirectory = args[2];
         setEncodingManager(encodingManager);
         double maxDistance = (args.length >= 4) ? Double.parseDouble(args[3]) : 10;
         int workers = (args.length == 5) ? Integer.parseInt(args[4]) : 2;
         try {
-            unconnectedFinderManager = new UnconnectedFinderManager(this, encoder, args[2], maxDistance, workers);
+            java.nio.file.Path outputFileNameConnections = Paths.get(outputDirectory, "unconnected_nodes.json"); 
+            unconnectedFinderManager = new UnconnectedFinderManager(this, encoder, outputFileNameConnections, maxDistance, workers);
         } catch (IOException e) {
             logger.fatal(e);
             e.printStackTrace();
@@ -68,7 +75,22 @@ public class GraphHopperSimple extends GraphHopperOSM {
      */
     @Override
     protected void cleanUp() {
-        logger.info("Skipping removal of subnetworks.");
+        try {
+            java.nio.file.Path outputFileNameSubnetworks = Paths.get(outputDirectory, "subnetworks.json"); 
+            int prevNodeCount = getGraphHopperStorage().getNodes();
+            RemoveAndDumpSubnetworks preparation = new RemoveAndDumpSubnetworks(getGraphHopperStorage(), getEncodingManager().fetchEdgeEncoders(), outputFileNameSubnetworks);
+            preparation.setMinNetworkSize(getMinNetworkSize());
+            preparation.setMinOneWayNetworkSize(getMinOneWayNetworkSize());
+            preparation.doWork();
+            int currNodeCount = getGraphHopperStorage().getNodes();
+            logger.info("edges: " + Helper.nf(getGraphHopperStorage().getAllEdges().length()) + ", nodes " + Helper.nf(currNodeCount)
+                    + ", there were " + Helper.nf(preparation.getMaxSubnetworks())
+                    + " subnetworks. removed them => " + Helper.nf(prevNodeCount - currNodeCount)
+                    + " less nodes");
+        } catch (IOException ex) {
+            logger.catching(ex);
+            System.exit(1);
+        }
     }
 
     @Override

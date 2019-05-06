@@ -19,6 +19,9 @@
 package de.geofabrik.osmi_routing;
 
 import org.apache.logging.log4j.Logger;
+
+import java.io.IOException;
+
 import org.apache.logging.log4j.LogManager;
 
 public class OsmiRoutingMain {
@@ -33,10 +36,16 @@ public class OsmiRoutingMain {
 
     public static void main(String[] args) {
         if (args.length < 3 || args.length > 5) {
-            System.err.println("ERROR: too few arguments.\nUsage: PROGRAM_NAME INFILE TMP_DIR OUTFILE [RADIUS [WORKERS]]");
+            System.err.println("ERROR: too few arguments.\nUsage: PROGRAM_NAME INFILE TMP_DIR OUTPUT_DIRECTORY [RADIUS [WORKERS]]");
             System.exit(1);
         }
-        GraphHopperSimple hopper = (GraphHopperSimple) new GraphHopperSimple(args).forServer();
-        hopper.run();
+        GraphHopperSimple hopper;
+        try {
+            hopper = (GraphHopperSimple) new GraphHopperSimple(args).forServer();
+            hopper.run();
+        } catch (IOException e) {
+            e.printStackTrace();
+            System.exit(1);
+        }
     }
 }
