@@ -34,10 +34,12 @@ import com.graphhopper.routing.profiles.BooleanEncodedValue;
 import com.graphhopper.routing.subnetwork.PrepareRoutingSubnetworks;
 import com.graphhopper.routing.util.FlagEncoder;
 import com.graphhopper.storage.GraphHopperStorage;
+import com.graphhopper.util.BitUtil;
 import com.graphhopper.util.EdgeExplorer;
 import com.graphhopper.util.EdgeIterator;
 
 import de.geofabrik.osmi_routing.GeoJSONWriter;
+import de.geofabrik.osmi_routing.OsmIdStore;
 import de.geofabrik.osmi_routing.UnconnectedFinderManager;
 
 public class RemoveAndDumpSubnetworks extends PrepareRoutingSubnetworks {
@@ -45,10 +47,12 @@ public class RemoveAndDumpSubnetworks extends PrepareRoutingSubnetworks {
     static final Logger logger = LogManager.getLogger(UnconnectedFinderManager.class.getName());
     
     GeoJSONWriter writer;
+    OsmIdStore edgeIdToWayId;
 
-    public RemoveAndDumpSubnetworks(GraphHopperStorage ghStorage, List<FlagEncoder> encoders, java.nio.file.Path path) throws IOException {
+    public RemoveAndDumpSubnetworks(GraphHopperStorage ghStorage, List<FlagEncoder> encoders, java.nio.file.Path path, OsmIdStore edgeIdToWayId) throws IOException {
         super(ghStorage, encoders);
         this.writer = new GeoJSONWriter(path);
+        this.edgeIdToWayId = edgeIdToWayId;
     }
     
     protected void finalize() throws IOException {
@@ -119,9 +123,9 @@ public class RemoveAndDumpSubnetworks extends PrepareRoutingSubnetworks {
                 while (edge.next()) {
                     edge.set(accessEnc, false).setReverse(accessEnc, false);
                     try {
-                        writer.writeEdge(edge.fetchWayGeometry(3), type);
+                        writer.writeEdge(edge.fetchWayGeometry(3), type, edgeIdToWayId.getOsmId(edge.getEdge()));
                     } catch (IOException e) {
-                        e.printStackTrace();
+                        logger.catching(e);
                         System.exit(1);
                     }
                     removedEdges++;

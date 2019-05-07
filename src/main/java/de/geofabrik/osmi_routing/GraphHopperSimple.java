@@ -1,6 +1,10 @@
 /*
  *  © 2019 Geofabrik GmbH
  *
+ *  This file contains code copied from the GraphHopper project,
+ *  © 2012–2019 GraphHopper GmbH, licensed under Apache License
+ *  version 2.
+ *
  *  This file is part of osmi_routing.
  *
  *  osmi_routing is free software: you can redistribute it and/or modify
@@ -44,6 +48,7 @@ public class GraphHopperSimple extends GraphHopperOSM {
     EncodingManager encodingManager;
     OsmIdAndNoExitStore nodeInfoStore;
     NoExitHook hook;
+    private OsmIdStore edgeMapping;
     String outputDirectory;
     UnconnectedFinderManager unconnectedFinderManager;
 
@@ -79,7 +84,7 @@ public class GraphHopperSimple extends GraphHopperOSM {
         try {
             java.nio.file.Path outputFileNameSubnetworks = Paths.get(outputDirectory, "subnetworks.json"); 
             int prevNodeCount = getGraphHopperStorage().getNodes();
-            RemoveAndDumpSubnetworks preparation = new RemoveAndDumpSubnetworks(getGraphHopperStorage(), getEncodingManager().fetchEdgeEncoders(), outputFileNameSubnetworks);
+            RemoveAndDumpSubnetworks preparation = new RemoveAndDumpSubnetworks(getGraphHopperStorage(), getEncodingManager().fetchEdgeEncoders(), outputFileNameSubnetworks, edgeMapping);
             preparation.setMinNetworkSize(getMinNetworkSize());
             preparation.setMinOneWayNetworkSize(getMinOneWayNetworkSize());
             preparation.doWork();
@@ -96,7 +101,15 @@ public class GraphHopperSimple extends GraphHopperOSM {
 
     @Override
     protected DataReader createReader(GraphHopperStorage ghStorage) {
-        OSMReader reader = new OSMReader(ghStorage);
+        edgeMapping = new OsmIdStore(getGraphHopperLocation());
+
+        OSMReader reader = new OSMReader(ghStorage) {
+                @Override
+                protected void storeOsmWayID(int edgeId, long osmWayId) {
+                    super.storeOsmWayID(edgeId, osmWayId);
+                    edgeMapping.addWayId(edgeId, osmWayId);
+                }
+        };
         reader.register(hook);
         return initDataReader(reader);
     }

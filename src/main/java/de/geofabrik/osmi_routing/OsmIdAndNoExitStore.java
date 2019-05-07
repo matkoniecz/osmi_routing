@@ -28,22 +28,26 @@ public class OsmIdAndNoExitStore {
     
     private int NO_ENTRY = -1;
     // The size of the OSM ID is reduced from 64 to 56 bits to have space for one extra bit for the noexit=yes state.
-    private final int OSM_ID_BYTES = 7;
+    protected final int OSM_ID_BYTES = 7;
     private final int BUFFER_SIZE = Long.BYTES;
     
     private DataAccess nodesInfo;
     private int entryBytes = 8;
-    private int entriesCount;
-    private ByteBuffer inputByteBuffer;
+    protected int entriesCount;
+    protected ByteBuffer inputByteBuffer;
 
-    public OsmIdAndNoExitStore(String location) {
+    public OsmIdAndNoExitStore(String location, String fileName) {
         this.entriesCount = 0;
         GHDirectory dir = new GHDirectory(location, DAType.RAM);
-        this.nodesInfo = dir.find("node_info", DAType.RAM);
+        this.nodesInfo = dir.find(fileName, DAType.RAM);
         this.nodesInfo.create(100000);
         this.inputByteBuffer = ByteBuffer.allocate(BUFFER_SIZE);
         if (entriesCount > 0)
             throw new AssertionError("The nodes info storage must be initialized only once.");
+    }
+
+    public OsmIdAndNoExitStore(String location) {
+        this(location, "node_info");
     }
 
     public int getBufferSize() {
@@ -54,7 +58,7 @@ public class OsmIdAndNoExitStore {
         nodesInfo.close();
     }
 
-    private void ensureCapacity(int nodeIndex) {
+    protected void ensureCapacity(int nodeIndex) {
         nodesInfo.ensureCapacity(((long) nodeIndex + 1) * entryBytes);
         // intialize with NO_ENTRY value
         for (int i = entriesCount; i <= nodeIndex; ++i) {
@@ -62,7 +66,7 @@ public class OsmIdAndNoExitStore {
         }
     }
 
-    private void checkNodeIdValid(long osmNodeId) {
+    protected void checkNodeIdValid(long osmNodeId) {
         long upperLimit = 1l << (OSM_ID_BYTES * 8);
         if (osmNodeId > upperLimit) {
             throw new AssertionError(String.format("Unable to handle OSM node ID %d because it exceeds the upper limit of %d.", osmNodeId, upperLimit));
@@ -72,13 +76,13 @@ public class OsmIdAndNoExitStore {
         }
     }
     
-    private void setLong(int nodeId, long value) {
+    protected void setLong(int nodeId, long value) {
         inputByteBuffer.clear();
         inputByteBuffer.putLong(value);
         nodesInfo.setBytes((long) nodeId  * entryBytes, inputByteBuffer.array(), BUFFER_SIZE);
     }
 
-    private long getLong(int nodeId, ByteBuffer buffer) {
+    protected long getLong(int nodeId, ByteBuffer buffer) {
         byte[] bytes = new byte[BUFFER_SIZE];
         nodesInfo.getBytes((long) nodeId  * entryBytes, bytes, BUFFER_SIZE);
         buffer.clear();
@@ -108,12 +112,12 @@ public class OsmIdAndNoExitStore {
         entriesCount = nodeId + 1;
     }
 
-    long getOsmId(int nodeId, ByteBuffer buffer) {
-        if (nodeId == -1) {
+    long getOsmId(int internalId, ByteBuffer buffer) {
+        if (internalId == -1) {
             // no entry for this node
             return -1;
         }
-        long osmId = getLong(nodeId, buffer);
+        long osmId = getLong(internalId, buffer);
         if (osmId == -1) {
             return osmId;
         }
@@ -121,16 +125,16 @@ public class OsmIdAndNoExitStore {
         return osmId;
     }
 
-    public long getOsmId(int nodeId) {
-        return getOsmId(nodeId, inputByteBuffer);
+    public long getOsmId(int internalId) {
+        return getOsmId(internalId, inputByteBuffer);
     }
 
-    boolean getNoExit(int nodeId, ByteBuffer buffer) {
-        if (nodeId == -1) {
+    boolean getNoExit(int internalId, ByteBuffer buffer) {
+        if (internalId == -1) {
             // no entry for this node
             return false;
         }
-        long stored = getLong(nodeId, buffer);
+        long stored = getLong(internalId, buffer);
         if (stored == -1) {
             // no entry for this node, return default
             return false;
@@ -139,7 +143,7 @@ public class OsmIdAndNoExitStore {
         return stored == 1l;
     }
 
-    public boolean getNoExit(int nodeId) {
-        return getNoExit(nodeId, inputByteBuffer);
+    public boolean getNoExit(int internalId) {
+        return getNoExit(internalId, inputByteBuffer);
     }
 }

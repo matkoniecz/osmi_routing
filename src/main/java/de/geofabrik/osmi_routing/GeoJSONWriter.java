@@ -128,7 +128,7 @@ public class GeoJSONWriter {
         close();
     }
 
-    public void writeEdge(PointList geom, RemoveAndDumpSubnetworks.SubnetworkType type) throws IOException {
+    public void writeEdge(PointList geom, RemoveAndDumpSubnetworks.SubnetworkType type, long osmId) throws IOException {
         StringBuilder out = new StringBuilder(900);
         if (!firstFeature) {
             out.append(",\n");
@@ -145,7 +145,9 @@ public class GeoJSONWriter {
             out.append("undefined");
         }
 
-        out.append("\"}, \"geometry\":{\"type\":\"LineString\",\"coordinates\":[");
+        out.append("\", \"way_id\": ");
+        out.append(osmId);
+        out.append("}, \"geometry\":{\"type\":\"LineString\",\"coordinates\":[");
         boolean firstPoint = true;
         for (GHPoint p : geom) {
             if (!firstPoint) {
