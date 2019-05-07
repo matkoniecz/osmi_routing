@@ -27,6 +27,10 @@ import java.util.List;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
+import com.carrotsearch.hppc.cursors.IntCursor;
+import com.carrotsearch.hppc.cursors.IntObjectCursor;
+import com.graphhopper.coll.GHIntHashSet;
+import com.graphhopper.coll.GHIntObjectHashMap;
 import com.graphhopper.reader.osm.pbf.PbfBlobDecoderListener;
 import com.graphhopper.routing.AlgorithmOptions;
 import com.graphhopper.routing.Path;
@@ -51,6 +55,8 @@ import com.graphhopper.util.Parameters;
 import com.graphhopper.util.PointList;
 import com.graphhopper.util.shapes.GHPoint;
 
+import de.geofabrik.osmi_routing.algorithm.DijkstraWithLimits;
+
 public class UnconnectedFinder implements Runnable {
 
     static final Logger logger = LogManager.getLogger(OsmiRoutingMain.class.getName());
@@ -61,6 +67,7 @@ public class UnconnectedFinder implements Runnable {
     ThreadSafeOsmIdNoExitStoreAccessor nodeInfoStore;
     AllRoadsFlagEncoder encoder;
     private double maxDistance;
+    DijkstraWithLimits dijkstra;
     AngleCalc angleCalc;
     private final OutputListener listener;
     private List<MissingConnection> results;
@@ -75,6 +82,7 @@ public class UnconnectedFinder implements Runnable {
         this.maxDistance = maxDistance;
         this.angleCalc = new AngleCalc();
         this.storage = graphhopperStorage;
+        this.dijkstra = new DijkstraWithLimits(this.storage, 80, this.maxDistance);
         this.index = (LocationIndexTree) hopper.getLocationIndex();
         this.nodeInfoStore = infoStore;
         this.listener = listener;
@@ -201,7 +209,12 @@ public class UnconnectedFinder implements Runnable {
         return result;
     }
 
-    private Double getDistanceOnGraph(int fromNodeId, GHPoint fromLocation, int toNodeId, GHPoint toLocation) {
+    private Double getDistanceOnGraph(int fromNodeId, GHPoint fromLocation, int toNodeId,
+            GHPoint toLocation, QueryResult.Position toPosition) {
+        if (toPosition == QueryResult.Position.TOWER) {
+            DijkstraWithLimits.Result result = dijkstra.route(fromNodeId, toNodeId);
+            return result.distance;
+        }
         HintsMap hints = new HintsMap("shortest");
         QueryGraph queryGraph = new QueryGraph(storage);
         Weighting weighting = hopper.createWeighting(hints, encoder, queryGraph);
@@ -220,6 +233,7 @@ public class UnconnectedFinder implements Runnable {
         QueryResult qr1 = new QueryResult(fromLocation.lat, fromLocation.lon);
         qr1.setSnappedPosition(Position.TOWER);
         QueryResult qr2 = new QueryResult(toLocation.lat, toLocation.lon);
+        //TODO Should that be toPosition instead of Position.TOWER?
         qr2.setSnappedPosition(Position.TOWER);
         QueryResult[] qrs = {qr1, qr2};
         queryGraph.lookup(Arrays.asList(qrs));
@@ -312,7 +326,7 @@ public class UnconnectedFinder implements Runnable {
         }
         // ratio between distance over graph and beeline; ratios within the range (1.0,4.0) are
         // an indicator for false positives.
-        double distanceOnGraph = getDistanceOnGraph(id, closestResult.getQueryPoint(), closestResult.getClosestNode(), closestResult.getSnappedPoint());
+        double distanceOnGraph = getDistanceOnGraph(id, closestResult.getQueryPoint(), closestResult.getClosestNode(), closestResult.getSnappedPoint(), closestResult.getSnappedPosition());
         GHPoint queryPoint = closestResult.getQueryPoint();
         GHPoint snappedPoint = closestResult.getSnappedPoint();
         double[] angleDiff = getAngleDiff(firstEdge, closestResult);
