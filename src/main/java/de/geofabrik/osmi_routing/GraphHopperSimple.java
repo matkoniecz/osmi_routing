@@ -25,6 +25,8 @@ package de.geofabrik.osmi_routing;
 
 import java.io.IOException;
 import java.nio.file.Paths;
+import java.util.ArrayList;
+import java.util.List;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -33,6 +35,7 @@ import com.graphhopper.reader.DataReader;
 import com.graphhopper.reader.osm.GraphHopperOSM;
 import com.graphhopper.reader.osm.OSMReader;
 import com.graphhopper.routing.util.EncodingManager;
+import com.graphhopper.routing.util.FlagEncoder;
 import com.graphhopper.storage.GraphHopperStorage;
 import com.graphhopper.util.Helper;
 
@@ -45,7 +48,6 @@ public class GraphHopperSimple extends GraphHopperOSM {
     static final Logger logger = LogManager.getLogger(OsmiRoutingMain.class.getName());
 
     AllRoadsFlagEncoder encoder;
-    EncodingManager encodingManager;
     OsmIdAndNoExitStore nodeInfoStore;
     NoExitHook hook;
     private OsmIdStore edgeMapping;
@@ -62,9 +64,12 @@ public class GraphHopperSimple extends GraphHopperOSM {
         // Disable sorting of graph because that would overwrite the values stored in the additional properties field of the graph.
         setSortGraph(false);
         encoder = new AllRoadsFlagEncoder();
-        encodingManager = EncodingManager.create(encoder);
         outputDirectory = args[2];
-        setEncodingManager(encodingManager);
+        List<FlagEncoder> encoders = new ArrayList<FlagEncoder>(1);
+        encoders.add(encoder);
+        EncodingManager.Builder emBuilder = EncodingManager.createBuilder(encoders, 4);
+        emBuilder.setEnableInstructions(false);
+        setEncodingManager(emBuilder.build());
         double maxDistance = (args.length >= 4) ? Double.parseDouble(args[3]) : 10;
         int workers = (args.length == 5) ? Integer.parseInt(args[4]) : 2;
         try {
