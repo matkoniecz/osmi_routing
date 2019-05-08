@@ -89,7 +89,7 @@ public class UnconnectedFinder implements Runnable {
         this.startId = start;
         this.count = count;
     }
-    
+
     public boolean ready() {
         return startId != -1;
     }
@@ -140,41 +140,16 @@ public class UnconnectedFinder implements Runnable {
             break;
         case EDGE:
             PointList allPoints = matched.getClosestEdge().fetchWayGeometry(3);
-            int matchingI = -1;
-            double mMin = Double.MAX_VALUE;
-            for (int i = 0; i < allPoints.size() - 1; ++i) {
-                double minLat = Math.min(allPoints.getLat(i), allPoints.getLat(i + 1));
-                double maxLat = Math.max(allPoints.getLat(i), allPoints.getLat(i + 1));
-                double minLon = Math.min(allPoints.getLon(i), allPoints.getLon(i + 1));
-                double maxLon = Math.max(allPoints.getLon(i), allPoints.getLon(i + 1));
-                if (matched.getSnappedPoint().getLat() < minLat || matched.getSnappedPoint().getLat() > maxLat
-                        || matched.getSnappedPoint().getLon() < minLon || matched.getSnappedPoint().getLon() > maxLon) {
-                    continue;
-                }
-                double mExpected, mThis;
-                // Check if ratio matches
-                // First check if the matching edge segment goes straightly or almost straightly in north-south direction.
-                if (maxLon - minLon < 0.0000005) {
-                    // almost north-south, work with inverse value: dx/dy
-                    mExpected = (allPoints.getLon(i + 1) - allPoints.getLon(i)) / (allPoints.getLat(i + 1) - allPoints.getLat(i));
-                    mThis = (allPoints.getLon(i + 1) - matched.getSnappedPoint().getLon()) / (allPoints.getLat(i + 1) - matched.getSnappedPoint().getLat());
-                } else {
-                    // all other cases: dy/dx
-                    mExpected = (allPoints.getLat(i + 1) - allPoints.getLat(i)) / (allPoints.getLon(i + 1) - allPoints.getLon(i));
-                    mThis = (allPoints.getLat(i + 1) - matched.getSnappedPoint().getLat()) / (allPoints.getLon(i + 1) - matched.getSnappedPoint().getLon());
-                }
-                if (Math.abs(mExpected - mThis) < mMin) {
-                    matchingI = i;
-                    matchedLat1 = allPoints.getLat(i);
-                    matchedLon1 = allPoints.getLon(i);
-                    matchedLat3 = allPoints.getLat(i + 1);
-                    matchedLon3 = allPoints.getLon(i + 1);
-                }
-            }
+            int matchingI = dijkstra.lowerNeighbourPillars(allPoints, matched.getSnappedPoint());
             if (matchingI < 0) {
                 long osmId = nodeInfoStore.getOsmId(openEnd.getBaseNode());
                 throw new IllegalStateException("Could not find a matching segment for OSM node " + Long.toString(osmId));
             }
+            matchedLat1 = allPoints.getLat(matchingI);
+            matchedLon1 = allPoints.getLon(matchingI);
+            matchedLat3 = allPoints.getLat(matchingI + 1);
+            matchedLon3 = allPoints.getLon(matchingI + 1);
+
             break;
         case PILLAR:
         default:
@@ -209,42 +184,17 @@ public class UnconnectedFinder implements Runnable {
         return result;
     }
 
-    private Double getDistanceOnGraph(int fromNodeId, GHPoint fromLocation, int toNodeId,
-            GHPoint toLocation, QueryResult.Position toPosition) {
-        if (toPosition == QueryResult.Position.TOWER) {
-            DijkstraWithLimits.Result result = dijkstra.route(fromNodeId, toNodeId);
+    private Double getDistanceOnGraph(int fromNodeId, GHPoint fromLocation, QueryResult closestResult) {
+        if (closestResult.getSnappedPosition() == QueryResult.Position.TOWER) {
+            DijkstraWithLimits.Result result = dijkstra.route(fromNodeId, closestResult.getClosestNode());
             return result.distance;
         }
-        HintsMap hints = new HintsMap("shortest");
-        QueryGraph queryGraph = new QueryGraph(storage);
-        Weighting weighting = hopper.createWeighting(hints, encoder, queryGraph);
-        AlgorithmOptions algoOpts = AlgorithmOptions.start().
-                algorithm(Parameters.Algorithms.DIJKSTRA).traversalMode(TraversalMode.NODE_BASED).weighting(weighting).
-                maxVisitedNodes(80).
-                hints(hints).
-                build();
-        RoutingAlgorithmFactory algoFactory = hopper.getAlgorithmFactory(hints);
-        
-        // We have to create two fake QueryResult objects and call QueryGraph.lookup with them.
-        // Our QueryResult objects point to tower nodes and creating virtual edges is not required in our case.
-        // However, GraphHopper insists on calling QueryGraph.lookup and throws
-        // java.lang.IllegalStateException("Call lookup before using this graph") when calling
-        // RoutingAlgorithmFactory.createAlgo.
-        QueryResult qr1 = new QueryResult(fromLocation.lat, fromLocation.lon);
-        qr1.setSnappedPosition(Position.TOWER);
-        QueryResult qr2 = new QueryResult(toLocation.lat, toLocation.lon);
-        //TODO Should that be toPosition instead of Position.TOWER?
-        qr2.setSnappedPosition(Position.TOWER);
-        QueryResult[] qrs = {qr1, qr2};
-        queryGraph.lookup(Arrays.asList(qrs));
-        
-        RoutingAlgorithm algo = algoFactory.createAlgo(queryGraph, algoOpts);
-        List<Path> tmpPathList = algo.calcPaths(fromNodeId, toNodeId);
-        if (algo.getVisitedNodes() >= algoOpts.getMaxVisitedNodes()) {
-            // no path found because max_visited_notes limit reached
-            return Double.MAX_VALUE;
+        if (closestResult.getSnappedPosition() == QueryResult.Position.PILLAR) {
+            DijkstraWithLimits.Result result = dijkstra.routeToPillar(fromNodeId, closestResult.getClosestEdge(), closestResult.getSnappedPoint());
+            return result.distance;
         }
-        return tmpPathList.get(0).getDistance();
+        DijkstraWithLimits.Result result = dijkstra.routeBetweenPillars(fromNodeId, closestResult.getClosestEdge(), closestResult.getSnappedPoint());
+        return result.distance;
     }
 
     private void checkNode(int id) throws IOException, IllegalStateException {
@@ -270,7 +220,7 @@ public class UnconnectedFinder implements Runnable {
         int edgesCount = 0;
         // ID of the adjacent node
         int adjNode = -1;
-        
+
         // get all edges and neighbour nodes
         while (iter.next()) {
             blindEndEdgeId = iter.getEdge();
@@ -326,7 +276,7 @@ public class UnconnectedFinder implements Runnable {
         }
         // ratio between distance over graph and beeline; ratios within the range (1.0,4.0) are
         // an indicator for false positives.
-        double distanceOnGraph = getDistanceOnGraph(id, closestResult.getQueryPoint(), closestResult.getClosestNode(), closestResult.getSnappedPoint(), closestResult.getSnappedPosition());
+        double distanceOnGraph = getDistanceOnGraph(id, fromPoints.toGHPoint(0), closestResult);
         GHPoint queryPoint = closestResult.getQueryPoint();
         GHPoint snappedPoint = closestResult.getSnappedPoint();
         double[] angleDiff = getAngleDiff(firstEdge, closestResult);

@@ -1,4 +1,4 @@
-package de.geofabrik.osmi_routing;
+package de.geofabrik.osmi_routing.algorithm;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
@@ -8,7 +8,11 @@ import org.junit.Test;
 import com.graphhopper.routing.util.EncodingManager;
 import com.graphhopper.storage.GraphBuilder;
 import com.graphhopper.storage.GraphHopperStorage;
+import com.graphhopper.util.DistanceCalc2D;
+import com.graphhopper.util.PointList;
+import com.graphhopper.util.shapes.GHPoint;
 
+import de.geofabrik.osmi_routing.AllRoadsFlagEncoder;
 import de.geofabrik.osmi_routing.algorithm.DijkstraWithLimits;
 
 public class DijkstraWithLimitTest {
@@ -37,6 +41,20 @@ public class DijkstraWithLimitTest {
         graph.edge(8, 6, 1, true);
     }
 
+    private PointList makePointList(GHPoint point3) {
+        PointList pointList = new PointList(5, false);
+        pointList.add(18.35, 34.1);
+        // cartesian distance 0--1: 0.02236068
+        pointList.add(18.36, 34.12);
+        // cartesian distance 1--2: 0.015
+        pointList.add(18.36, 34.135);
+        // cartesian distance 2--3: 0.15435349
+        pointList.add(point3.lat, point3.lon);
+        // cartesian distance 3--4: 0.200997512
+        pointList.add(18.52, 34.0);
+        return pointList;
+    }
+
     @Test
     public void testRoute() {
         DijkstraWithLimits.Result r = new DijkstraWithLimits(graph, 100, 40).route(2, 5);
@@ -59,5 +77,18 @@ public class DijkstraWithLimitTest {
         DijkstraWithLimits.Result r = new DijkstraWithLimits(graph, 100, maxDistance).route(1, 5);
         assertEquals(DijkstraWithLimits.Status.TOO_LONG, r.status);
         assertEquals(maxDistance, r.distance, 0.0001);
+    }
+
+    @Test
+    public void testDistanceCalc() {
+        GHPoint p = new GHPoint(18.5, 34.2);
+        PointList pointList = makePointList(p);
+        // use simple DistanceCalc2D which assumes cartesian 2D coordinates
+        double distance = new DijkstraWithLimits(graph, 100, 1, new DistanceCalc2D()).distanceOnEdge(pointList, p);
+        assertEquals(0.19171417, distance, 0.000000001);
+        // reverse point list
+        pointList.reverse();
+        distance = new DijkstraWithLimits(graph, 100, 1, new DistanceCalc2D()).distanceOnEdge(pointList, p);
+        assertEquals(0.200997512, distance, 0.000000001);
     }
 }
