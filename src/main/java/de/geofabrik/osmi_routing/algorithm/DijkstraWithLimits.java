@@ -1,7 +1,6 @@
 package de.geofabrik.osmi_routing.algorithm;
 
 import com.carrotsearch.hppc.cursors.IntObjectCursor;
-import com.graphhopper.coll.GHIntHashSet;
 import com.graphhopper.coll.GHIntObjectHashMap;
 import com.graphhopper.storage.GraphHopperStorage;
 import com.graphhopper.util.DistanceCalc;
@@ -24,6 +23,7 @@ public class DijkstraWithLimits {
     protected class DijkstraNodeInfo {
         public double distance = 0;
         public int baseNode = -1;
+        public boolean visited = false;
 
         public DijkstraNodeInfo(double distance, int baseNode) {
             this.distance = distance;
@@ -161,39 +161,39 @@ public class DijkstraWithLimits {
 
     public Result route(int fromNodeId, int toNodeId) {
         GHIntObjectHashMap<DijkstraNodeInfo> nodeInfo = new GHIntObjectHashMap<DijkstraNodeInfo>(100);
-        //TODO maybe use plain array/list instead
-        GHIntHashSet visitedNodes = new GHIntHashSet(100);
         EdgeExplorer explorer = storage.createEdgeExplorer();
         nodeInfo.put(fromNodeId, new DijkstraNodeInfo(0, -1));
         EdgeIterator adjIter = explorer.setBaseNode(fromNodeId);
 
-        while (visitedNodes.size() < maxNodes) {
+        while (nodeInfo.size() < maxNodes) {
             // get node with shortest distance
             int baseNode = -1;
             double shortestDistance = Double.MAX_VALUE;
+            DijkstraNodeInfo info = null;
             for (IntObjectCursor<DijkstraNodeInfo> dni : nodeInfo) {
-                if (dni.value.distance <= shortestDistance && !visitedNodes.contains(dni.key)) {
+                if (dni.value.distance <= shortestDistance && !dni.value.visited) {
                     baseNode = dni.key;
                     shortestDistance = dni.value.distance;
+                    info = dni.value;
                 }
             }
             if (shortestDistance > maxDistance) {
                 return new Result(Status.TOO_LONG, maxDistance);
             }
             // mark as visited
-            visitedNodes.add(baseNode);
+            info.visited = true;
             // visit all neighbour nodes of this node
             adjIter = explorer.setBaseNode(baseNode);
             while (adjIter.next()) {
                 int adj = adjIter.getAdjNode();
-                if (visitedNodes.contains(adj)) {
+                DijkstraNodeInfo adjInfo = nodeInfo.get(adj);
+                if (adjInfo != null && adjInfo.visited) {
                     continue;
                 }
                 double thisDist = adjIter.getDistance();
                 if (toNodeId == adj) {
                     return new Result(Status.OK, shortestDistance + thisDist);
                 }
-                DijkstraNodeInfo adjInfo = nodeInfo.get(adj);
                 if (adjInfo == null) {
                     nodeInfo.put(
                         adj,
