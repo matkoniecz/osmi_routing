@@ -31,16 +31,7 @@ import com.carrotsearch.hppc.cursors.IntCursor;
 import com.carrotsearch.hppc.cursors.IntObjectCursor;
 import com.graphhopper.coll.GHIntHashSet;
 import com.graphhopper.coll.GHIntObjectHashMap;
-import com.graphhopper.reader.osm.pbf.PbfBlobDecoderListener;
-import com.graphhopper.routing.AlgorithmOptions;
-import com.graphhopper.routing.Path;
-import com.graphhopper.routing.QueryGraph;
-import com.graphhopper.routing.RoutingAlgorithm;
-import com.graphhopper.routing.RoutingAlgorithmFactory;
 import com.graphhopper.routing.util.EdgeFilter;
-import com.graphhopper.routing.util.HintsMap;
-import com.graphhopper.routing.util.TraversalMode;
-import com.graphhopper.routing.weighting.Weighting;
 import com.graphhopper.storage.GraphHopperStorage;
 import com.graphhopper.storage.NodeAccess;
 import com.graphhopper.storage.index.LocationIndex;
@@ -61,7 +52,6 @@ public class UnconnectedFinder implements Runnable {
 
     static final Logger logger = LogManager.getLogger(OsmiRoutingMain.class.getName());
 
-    private GraphHopperSimple hopper;
     private GraphHopperStorage storage;
     private LocationIndex index;
     ThreadSafeOsmIdNoExitStoreAccessor nodeInfoStore;
@@ -77,7 +67,6 @@ public class UnconnectedFinder implements Runnable {
     public UnconnectedFinder(GraphHopperSimple hopper, AllRoadsFlagEncoder encoder,
             double maxDistance, GraphHopperStorage graphhopperStorage,
             ThreadSafeOsmIdNoExitStoreAccessor infoStore, OutputListener listener, int start, int count) {
-        this.hopper = hopper;
         this.encoder = encoder;
         this.maxDistance = maxDistance;
         this.angleCalc = new AngleCalc();
