@@ -59,7 +59,9 @@ public class AllRoadsFlagEncoder extends AbstractFlagEncoder {
         allowedRoadTypes.add("path");
         allowedRoadTypes.add("raceway");
         allowedRoadTypes.add("steps");
+        allowedRoadTypes.add("platform");
         init();
+        setBlockFords(false);
     }
 
     public int getVersion() {
@@ -87,6 +89,9 @@ public class AllRoadsFlagEncoder extends AbstractFlagEncoder {
         if (highwayValue != null && allowedRoadTypes.contains(highwayValue)) {
             return EncodingManager.Access.WAY;
         }
+        if (way.hasTag("railway", "platform") || way.hasTag("public_transport", "platform")) {
+            return EncodingManager.Access.WAY;
+        }
         String routeValue = way.getTag("route");
         if (routeValue != null && routeValue.equals("ferry")) {
             return EncodingManager.Access.FERRY;
@@ -100,8 +105,6 @@ public class AllRoadsFlagEncoder extends AbstractFlagEncoder {
             return edgeFlags;
         }
         speedEncoder.setDecimal(false, edgeFlags, 10);
-//        setSpeed(false, edgeFlags, 10);
-//        setSpeed(true, edgeFlags, 10);
         accessEnc.setBool(false, edgeFlags, true);
         accessEnc.setBool(true, edgeFlags, true);
         return edgeFlags;
