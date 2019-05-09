@@ -86,7 +86,7 @@ public class GeoJSONWriter {
         out.append(df1.format(m.getAngles()[0]));
         out.append(", \"angle2\": ");
         out.append(df1.format(m.getAngles()[1]));
-        out.append(", \"osm_id\": ");
+        out.append(", \"node_id\": ");
         out.append(m.getOsmId());
         out.append("},");
         out.append(" \"geometry\":{\"type\":\"Point\",\"coordinates\":[");
