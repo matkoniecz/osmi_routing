@@ -42,6 +42,8 @@ import com.graphhopper.reader.osm.pbf.PbfBlobResult;
 import com.graphhopper.storage.GraphHopperStorage;
 import com.graphhopper.util.AngleCalc;
 
+import de.geofabrik.osmi_routing.reader.BarriersHook;
+
 public class UnconnectedFinderManager {
 
         static final Logger logger = LogManager.getLogger(UnconnectedFinderManager.class.getName());
@@ -49,6 +51,7 @@ public class UnconnectedFinderManager {
         private GraphHopperSimple hopper;
         private GraphHopperStorage storage;
         OsmIdAndNoExitStore nodeInfoStore;
+        BarriersHook barriersHook;
         AllRoadsFlagEncoder encoder;
         GeoJSONWriter writer;
         private double maxDistance;
@@ -160,7 +163,7 @@ public class UnconnectedFinderManager {
                 };
                 
                 UnconnectedFinder f = new UnconnectedFinder(hopper, encoder, maxDistance, storage,
-                        new ThreadSafeOsmIdNoExitStoreAccessor(nodeInfoStore), listener, startId,
+                        new ThreadSafeOsmIdNoExitStoreAccessor(nodeInfoStore), barriersHook, listener, startId,
                         count);
                 executorService.execute(f);
                 sendResultsToSink(threadCount - 1);
@@ -187,9 +190,10 @@ public class UnconnectedFinderManager {
             
         }
 
-        public void init(GraphHopperStorage graphHopperStorage, OsmIdAndNoExitStore infoStore) {
+        public void init(GraphHopperStorage graphHopperStorage, OsmIdAndNoExitStore infoStore, BarriersHook barriersHook) {
             this.storage = graphHopperStorage;
             this.nodeInfoStore = infoStore;
+            this.barriersHook = barriersHook;
         }
 
 }

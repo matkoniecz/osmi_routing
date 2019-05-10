@@ -47,6 +47,7 @@ import com.graphhopper.util.PointList;
 import com.graphhopper.util.shapes.GHPoint;
 
 import de.geofabrik.osmi_routing.algorithm.DijkstraWithLimits;
+import de.geofabrik.osmi_routing.reader.BarriersHook;
 
 public class UnconnectedFinder implements Runnable {
 
@@ -55,6 +56,7 @@ public class UnconnectedFinder implements Runnable {
     private GraphHopperStorage storage;
     private LocationIndex index;
     ThreadSafeOsmIdNoExitStoreAccessor nodeInfoStore;
+    BarriersHook barriersHook;
     AllRoadsFlagEncoder encoder;
     private double maxDistance;
     DijkstraWithLimits dijkstra;
@@ -66,7 +68,8 @@ public class UnconnectedFinder implements Runnable {
 
     public UnconnectedFinder(GraphHopperSimple hopper, AllRoadsFlagEncoder encoder,
             double maxDistance, GraphHopperStorage graphhopperStorage,
-            ThreadSafeOsmIdNoExitStoreAccessor infoStore, OutputListener listener, int start, int count) {
+            ThreadSafeOsmIdNoExitStoreAccessor infoStore, BarriersHook barriersHook,
+            OutputListener listener, int start, int count) {
         this.encoder = encoder;
         this.maxDistance = maxDistance;
         this.angleCalc = new AngleCalc();
@@ -74,6 +77,7 @@ public class UnconnectedFinder implements Runnable {
         this.dijkstra = new DijkstraWithLimits(this.storage, 80, this.maxDistance);
         this.index = (LocationIndexTree) hopper.getLocationIndex();
         this.nodeInfoStore = infoStore;
+        this.barriersHook = barriersHook;
         this.listener = listener;
         this.startId = start;
         this.count = count;
@@ -261,6 +265,10 @@ public class UnconnectedFinder implements Runnable {
             }
         }
         if (distanceClosest == Double.MAX_VALUE) {
+            return;
+        }
+        // check if the closest node intersects with a barrier
+        if (barriersHook.crossesBarrier(fromPoints.getLon(0), fromPoints.getLat(0), closestResult.getSnappedPoint().lon, closestResult.getSnappedPoint().lat)) {
             return;
         }
         // ratio between distance over graph and beeline; ratios within the range (1.0,4.0) are

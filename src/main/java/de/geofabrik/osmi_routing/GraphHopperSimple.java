@@ -39,6 +39,7 @@ import com.graphhopper.routing.util.FlagEncoder;
 import com.graphhopper.storage.GraphHopperStorage;
 import com.graphhopper.util.Helper;
 
+import de.geofabrik.osmi_routing.reader.BarriersHook;
 import de.geofabrik.osmi_routing.reader.NoExitHook;
 import de.geofabrik.osmi_routing.subnetworks.RemoveAndDumpSubnetworks;
 
@@ -47,9 +48,9 @@ public class GraphHopperSimple extends GraphHopperOSM {
 
     static final Logger logger = LogManager.getLogger(OsmiRoutingMain.class.getName());
 
-    AllRoadsFlagEncoder encoder;
     OsmIdAndNoExitStore nodeInfoStore;
     NoExitHook hook;
+    BarriersHook barriersHook;
     private OsmIdStore edgeMapping;
     String outputDirectory;
     UnconnectedFinderManager unconnectedFinderManager;
@@ -58,12 +59,13 @@ public class GraphHopperSimple extends GraphHopperOSM {
         super();
         nodeInfoStore = new OsmIdAndNoExitStore(getGraphHopperLocation());
         hook = new NoExitHook(nodeInfoStore);
+        barriersHook = new BarriersHook();
         setDataReaderFile(args[0]);
         setGraphHopperLocation(args[1]);
         setCHEnabled(false);
         // Disable sorting of graph because that would overwrite the values stored in the additional properties field of the graph.
         setSortGraph(false);
-        encoder = new AllRoadsFlagEncoder();
+        AllRoadsFlagEncoder encoder = new AllRoadsFlagEncoder();
         outputDirectory = args[2];
         List<FlagEncoder> encoders = new ArrayList<FlagEncoder>(1);
         encoders.add(encoder);
@@ -116,14 +118,15 @@ public class GraphHopperSimple extends GraphHopperOSM {
                 }
         };
         reader.register(hook);
+        reader.register(barriersHook);
         return initDataReader(reader);
     }
 
     public void run() {
         importOrLoad();
-        logger.info("OSM node ID and noexit caches consume {} MB.", hook.usedMemory() / (1024*1024));
         hook.releaseNoExitSet();
-        unconnectedFinderManager.init(getGraphHopperStorage(), nodeInfoStore);
+        barriersHook.prepareForQuery();
+        unconnectedFinderManager.init(getGraphHopperStorage(), nodeInfoStore, barriersHook);
         unconnectedFinderManager.run();
         close();
     }
