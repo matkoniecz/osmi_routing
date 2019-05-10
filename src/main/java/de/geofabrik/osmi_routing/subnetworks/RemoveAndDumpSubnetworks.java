@@ -34,7 +34,6 @@ import com.graphhopper.routing.profiles.BooleanEncodedValue;
 import com.graphhopper.routing.subnetwork.PrepareRoutingSubnetworks;
 import com.graphhopper.routing.util.FlagEncoder;
 import com.graphhopper.storage.GraphHopperStorage;
-import com.graphhopper.util.BitUtil;
 import com.graphhopper.util.EdgeExplorer;
 import com.graphhopper.util.EdgeIterator;
 
@@ -50,11 +49,11 @@ public class RemoveAndDumpSubnetworks extends PrepareRoutingSubnetworks {
     OsmIdStore edgeIdToWayId;
 
     public RemoveAndDumpSubnetworks(GraphHopperStorage ghStorage, List<FlagEncoder> encoders, java.nio.file.Path path, OsmIdStore edgeIdToWayId) throws IOException {
-        super(ghStorage, encoders);
+        super(ghStorage, encoders, false);
         this.writer = new GeoJSONWriter(path);
         this.edgeIdToWayId = edgeIdToWayId;
     }
-    
+
     protected void finalize() throws IOException {
         this.writer.close();
     }
@@ -112,8 +111,6 @@ public class RemoveAndDumpSubnetworks extends PrepareRoutingSubnetworks {
         }
         return removedEdges;
     }
-    
-
 
     int removeEdges(EdgeExplorer explorer, BooleanEncodedValue accessEnc, IntIndexedContainer component, int min, SubnetworkType type) {
         int removedEdges = 0;
