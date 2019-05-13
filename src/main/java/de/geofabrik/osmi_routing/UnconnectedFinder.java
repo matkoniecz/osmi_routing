@@ -47,6 +47,8 @@ import com.graphhopper.util.PointList;
 import com.graphhopper.util.shapes.GHPoint;
 
 import de.geofabrik.osmi_routing.algorithm.DijkstraWithLimits;
+import de.geofabrik.osmi_routing.flag_encoders.AllRoadsFlagEncoder;
+import de.geofabrik.osmi_routing.flag_encoders.AllRoadsFlagEncoder.RoadClass;
 import de.geofabrik.osmi_routing.reader.BarriersHook;
 
 public class UnconnectedFinder implements Runnable {
@@ -206,6 +208,8 @@ public class UnconnectedFinder implements Runnable {
             return;
         }
         EdgeIterator iter = explorer.setBaseNode(id);
+        RoadClass roadClass = RoadClass.UNDEFINED;
+        boolean isPrivate = false;
 
         // edge ID of the blind end node we are currently working on
         int blindEndEdgeId = -1;
@@ -218,6 +222,8 @@ public class UnconnectedFinder implements Runnable {
         while (iter.next()) {
             blindEndEdgeId = iter.getEdge();
             adjNode = iter.getAdjNode();
+            roadClass = encoder.getRoadClass(iter);
+            isPrivate = encoder.isPrivateAccess(iter);
             ++edgesCount;
         }
         if (edgesCount > 1 || adjNode == -1 || blindEndEdgeId == -1) {
@@ -277,7 +283,9 @@ public class UnconnectedFinder implements Runnable {
         GHPoint queryPoint = closestResult.getQueryPoint();
         GHPoint snappedPoint = closestResult.getSnappedPoint();
         double[] angleDiff = getAngleDiff(firstEdge, closestResult);
-        results.add(new MissingConnection(queryPoint, snappedPoint, distanceClosest, distanceOnGraph, id, angleDiff, osmId, closestResult.getSnappedPosition()));
+        results.add(new MissingConnection(queryPoint, snappedPoint, distanceClosest,
+                distanceOnGraph, id, angleDiff, osmId,
+                closestResult.getSnappedPosition(), roadClass, isPrivate));
     }
 
     private void runAndCatchExceptions() {

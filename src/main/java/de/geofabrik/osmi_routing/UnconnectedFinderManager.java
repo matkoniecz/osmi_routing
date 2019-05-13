@@ -42,6 +42,7 @@ import com.graphhopper.reader.osm.pbf.PbfBlobResult;
 import com.graphhopper.storage.GraphHopperStorage;
 import com.graphhopper.util.AngleCalc;
 
+import de.geofabrik.osmi_routing.flag_encoders.AllRoadsFlagEncoder;
 import de.geofabrik.osmi_routing.reader.BarriersHook;
 
 public class UnconnectedFinderManager {

@@ -78,7 +78,15 @@ public class GeoJSONWriter {
         }
         out.append("{\"type\":\"Feature\",\"properties\":{\"type\": \"");
         out.append(matchType);
-        out.append("\", \"distance\": ");
+        out.append("\", \"highway\": \"");
+        out.append(m.getRoadClass().toString());
+        out.append("\", \"private\": ");
+        if (m.getPrivateAccess()) {
+            out.append("true");
+        } else {
+            out.append("false");
+        }
+        out.append(", \"distance\": ");
         out.append(df2.format(m.getDistance()));
         out.append(", \"ratio\": ");
         out.append(df2.format(m.getRatio()));

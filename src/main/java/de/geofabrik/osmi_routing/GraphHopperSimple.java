@@ -39,6 +39,7 @@ import com.graphhopper.routing.util.FlagEncoder;
 import com.graphhopper.storage.GraphHopperStorage;
 import com.graphhopper.util.Helper;
 
+import de.geofabrik.osmi_routing.flag_encoders.AllRoadsFlagEncoder;
 import de.geofabrik.osmi_routing.reader.BarriersHook;
 import de.geofabrik.osmi_routing.reader.NoExitHook;
 import de.geofabrik.osmi_routing.subnetworks.RemoveAndDumpSubnetworks;
