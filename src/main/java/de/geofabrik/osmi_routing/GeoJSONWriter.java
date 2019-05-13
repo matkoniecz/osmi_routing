@@ -94,6 +94,8 @@ public class GeoJSONWriter {
         out.append(df1.format(m.getAngles()[0]));
         out.append(", \"angle2\": ");
         out.append(df1.format(m.getAngles()[1]));
+        out.append(", \"priority\": ");
+        out.append(df1.format(m.getPriority()));
         out.append(", \"node_id\": ");
         out.append(m.getOsmId());
         out.append("},");
@@ -111,6 +113,10 @@ public class GeoJSONWriter {
         out.append(df1.format(m.getAngles()[0]));
         out.append(", \"angle2\": ");
         out.append(df1.format(m.getAngles()[1]));
+        out.append(", \"priority\": ");
+        out.append(df1.format(m.getPriority()));
+        out.append(", \"node_id\": ");
+        out.append(m.getOsmId());
         out.append("},");
         out.append(" \"geometry\":{\"type\":\"Point\",\"coordinates\":[");
         out.append(df7.format(m.getSnapPoint().lon));

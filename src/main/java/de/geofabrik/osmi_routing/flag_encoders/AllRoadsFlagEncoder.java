@@ -121,6 +121,8 @@ public class AllRoadsFlagEncoder extends AbstractFlagEncoder {
                         return RoadClass.SERVICE_DRIVEWAY;
                     } else if (service.equals("alley")) {
                         return RoadClass.SERVICE_ALLEY;
+                    } else if (service.equals("parking_aisle")) {
+                        return RoadClass.SERVICE_PARKING_AISLE;
                     }
                     return RoadClass.SERVICE;
                 } else if (highway.equals("track")) {

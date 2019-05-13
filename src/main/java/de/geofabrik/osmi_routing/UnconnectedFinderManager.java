@@ -24,6 +24,7 @@ package de.geofabrik.osmi_routing;
 
 import java.io.IOException;
 import java.nio.file.Path;
+import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Queue;
@@ -43,6 +44,7 @@ import com.graphhopper.storage.GraphHopperStorage;
 import com.graphhopper.util.AngleCalc;
 
 import de.geofabrik.osmi_routing.flag_encoders.AllRoadsFlagEncoder;
+import de.geofabrik.osmi_routing.flag_encoders.AllRoadsFlagEncoder.RoadClass;
 import de.geofabrik.osmi_routing.reader.BarriersHook;
 
 public class UnconnectedFinderManager {
@@ -62,6 +64,7 @@ public class UnconnectedFinderManager {
         private final Queue<MissingConnectionResult> results;
         ExecutorService executorService;
         private int threadCount;
+        HashMap<RoadClass, int[]> priorities;
         private int increment = 100000;
 
         public UnconnectedFinderManager(GraphHopperSimple hopper, AllRoadsFlagEncoder encoder, Path outputPath, double maxDistance, int workers) throws IOException {
@@ -80,6 +83,38 @@ public class UnconnectedFinderManager {
             
             this.threadCount = workers;
             executorService = Executors.newFixedThreadPool(threadCount);
+            initPriorities();
+        }
+
+        private void initPriorities() {
+            priorities = new HashMap<AllRoadsFlagEncoder.RoadClass, int[]>();
+            priorities.put(RoadClass.MOTORWAY,      new int[]{1, 1, 1, 2});
+            priorities.put(RoadClass.MOTORWAY_LINK, new int[]{1, 1, 1, 2});
+            priorities.put(RoadClass.TRUNK,         new int[]{1, 1, 1, 2});
+            priorities.put(RoadClass.TRUNK_LINK,    new int[]{1, 1, 1, 2});
+            priorities.put(RoadClass.PRIMARY,       new int[]{1, 1, 1, 2});
+            priorities.put(RoadClass.PRIMARY_LINK,  new int[]{1, 1, 1, 2});
+            priorities.put(RoadClass.SECONDARY,     new int[]{1, 1, 1, 2});
+            priorities.put(RoadClass.SECONDARY_LINK, new int[]{1, 1, 1, 2});
+            priorities.put(RoadClass.TERTIARY,      new int[]{2, 2, 3, 3});
+            priorities.put(RoadClass.TERTIARY_LINK, new int[]{2, 2, 3, 3});
+            priorities.put(RoadClass.UNCLASSIFIED,  new int[]{2, 2, 3, 3});
+            priorities.put(RoadClass.RESIDENTIAL,   new int[]{2, 2, 3, 3});
+            priorities.put(RoadClass.LIVING_STREET, new int[]{2, 3, 3, 4});
+            priorities.put(RoadClass.TRACK,         new int[]{2, 2, 3, 4});
+            priorities.put(RoadClass.PEDESTRIAN,    new int[]{3, 4, 4, 5});
+            priorities.put(RoadClass.FOOTWAY,       new int[]{4, 5, 5, 5});
+            priorities.put(RoadClass.CYCLEWAY,      new int[]{4, 5, 5, 5});
+            priorities.put(RoadClass.PATH,          new int[]{4, 5, 5, 5});
+            priorities.put(RoadClass.STEPS,         new int[]{5, 5, 5, 5});
+            priorities.put(RoadClass.SERVICE,       new int[]{3, 4, 4, 4});
+            priorities.put(RoadClass.SERVICE_ALLEY, new int[]{3, 4, 4, 5});
+            priorities.put(RoadClass.SERVICE_DRIVEWAY, new int[]{4, 4, 5, 5});
+            priorities.put(RoadClass.SERVICE_PARKING_AISLE, new int[]{4, 4, 5, 5});
+            priorities.put(RoadClass.ROAD,          new int[]{3, 3, 4, 4});
+            priorities.put(RoadClass.RACEWAY,       new int[]{2, 2, 2, 3});
+            priorities.put(RoadClass.FERRY,         new int[]{2, 3, 3, 3});
+            priorities.put(RoadClass.PLATFORM,      new int[]{4, 5, 5, 6});
         }
 
         private void waitForUpdate() {
@@ -165,7 +200,7 @@ public class UnconnectedFinderManager {
                 
                 UnconnectedFinder f = new UnconnectedFinder(hopper, encoder, maxDistance, storage,
                         new ThreadSafeOsmIdNoExitStoreAccessor(nodeInfoStore), barriersHook, listener, startId,
-                        count);
+                        count, priorities);
                 executorService.execute(f);
                 sendResultsToSink(threadCount - 1);
             }

@@ -18,11 +18,12 @@ public class MissingConnection {
     private QueryResult.Position matchType;
     private AllRoadsFlagEncoder.RoadClass roadClass;
     private boolean privateAccess;
+    private int priority;
 
     public MissingConnection(GHPoint openEndPoint, GHPoint snapPoint, double distanceBeeline,
             double distanceGraph, int internalNodeId, double[] angleDiff, long osmId,
             QueryResult.Position matchType, AllRoadsFlagEncoder.RoadClass roadClass,
-            boolean privateAccess) {
+            boolean privateAccess, int priority) {
         this.openEndPoint = openEndPoint;
         this.snapPoint = snapPoint;
         this.distance = distanceBeeline;
@@ -33,6 +34,11 @@ public class MissingConnection {
         this.matchType = matchType;
         this.roadClass = roadClass;
         this.privateAccess = privateAccess;
+        this.priority = priority;
+    }
+
+    public int getPriority() {
+        return priority;
     }
 
     public GHPoint getOpenEndPoint() {

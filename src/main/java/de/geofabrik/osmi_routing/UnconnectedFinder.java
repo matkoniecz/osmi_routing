@@ -22,6 +22,7 @@ import java.io.IOException;
 import java.nio.BufferUnderflowException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Map;
 import java.util.List;
 
 import org.apache.logging.log4j.LogManager;
@@ -67,11 +68,12 @@ public class UnconnectedFinder implements Runnable {
     private List<MissingConnection> results;
     private int startId;
     private int count;
+    Map<RoadClass, int[]> priorities;
 
     public UnconnectedFinder(GraphHopperSimple hopper, AllRoadsFlagEncoder encoder,
             double maxDistance, GraphHopperStorage graphhopperStorage,
             ThreadSafeOsmIdNoExitStoreAccessor infoStore, BarriersHook barriersHook,
-            OutputListener listener, int start, int count) {
+            OutputListener listener, int start, int count, Map<RoadClass, int[]> priorities) {
         this.encoder = encoder;
         this.maxDistance = maxDistance;
         this.angleCalc = new AngleCalc();
@@ -83,6 +85,7 @@ public class UnconnectedFinder implements Runnable {
         this.listener = listener;
         this.startId = start;
         this.count = count;
+        this.priorities = priorities;
     }
 
     public boolean ready() {
@@ -192,6 +195,18 @@ public class UnconnectedFinder implements Runnable {
         return result.distance;
     }
 
+    private int getPriority(AllRoadsFlagEncoder.RoadClass roadClass, boolean isPrivate, double distance) {
+        int[] thisClassPriorities = priorities.getOrDefault(roadClass, new int[]{0, 0, 0, 0});
+        double categoryWith = maxDistance / 4;
+        int index = (int) (distance / categoryWith);
+        index = Math.min(3, index);
+        int priority = thisClassPriorities[index];
+        if (isPrivate) {
+            priority += 1;
+        }
+        return priority;
+    }
+
     private void checkNode(int id) throws IOException, IllegalStateException {
         EdgeExplorer explorer = storage.createEdgeExplorer();
         if (storage.isNodeRemoved(id)) {
@@ -283,9 +298,10 @@ public class UnconnectedFinder implements Runnable {
         GHPoint queryPoint = closestResult.getQueryPoint();
         GHPoint snappedPoint = closestResult.getSnappedPoint();
         double[] angleDiff = getAngleDiff(firstEdge, closestResult);
+        int priority = getPriority(roadClass, isPrivate, distanceClosest);
         results.add(new MissingConnection(queryPoint, snappedPoint, distanceClosest,
                 distanceOnGraph, id, angleDiff, osmId,
-                closestResult.getSnappedPosition(), roadClass, isPrivate));
+                closestResult.getSnappedPosition(), roadClass, isPrivate, priority));
     }
 
     private void runAndCatchExceptions() {
