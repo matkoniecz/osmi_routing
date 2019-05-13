@@ -47,7 +47,7 @@ public class BarriersHook extends OSMReaderHook {
 
     @Override
     public void preProcessWay(ReaderWay way) {
-        if (isBarrier(way)) {
+        if (isBarrier(way) && way.getNodes().size() >= 2) {
             for (int i = 0; i < way.getNodes().size(); ++i) {
                 locationIndex.setAsInterested(way.getNodes().get(i));
             }
@@ -65,6 +65,9 @@ public class BarriersHook extends OSMReaderHook {
     public boolean beforeProcessWay(ReaderWay way, boolean continueWithProcessing) {
         if (!isBarrier(way)) {
             return true;
+        }
+        if (way.getNodes().size() < 2) {
+            return continueWithProcessing;
         }
         // construct linestring
         Coordinate[] coords = new Coordinate[way.getNodes().size()];

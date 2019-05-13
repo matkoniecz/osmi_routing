@@ -13,13 +13,9 @@ public class SparseLocationIndex {
     private BitUtil bitUtil;
     private final int invalid = 0xFFFFFFFF;
 
-    public SparseLocationIndex(int capacity, double loadFactor) {
-        this.index = new GHLongLongHashMap(capacity, loadFactor);
-        this.bitUtil = BitUtil.get(ByteOrder.nativeOrder());
-    }
-
     public SparseLocationIndex() {
-        this(10000, 0.01);
+        this.index = new GHLongLongHashMap();
+        this.bitUtil = BitUtil.get(ByteOrder.nativeOrder());
     }
     
     public void setAsInterested(long osmId) {
