@@ -54,7 +54,7 @@ public class RemoveAndDumpSubnetworks extends PrepareRoutingSubnetworks {
         this.edgeIdToWayId = edgeIdToWayId;
     }
 
-    protected void finalize() throws IOException {
+    public void close() throws IOException {
         this.writer.close();
     }
 

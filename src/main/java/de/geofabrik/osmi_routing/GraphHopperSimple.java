@@ -95,6 +95,7 @@ public class GraphHopperSimple extends GraphHopperOSM {
             preparation.setMinNetworkSize(getMinNetworkSize());
             preparation.setMinOneWayNetworkSize(getMinOneWayNetworkSize());
             preparation.doWork();
+            preparation.close();
             int currNodeCount = getGraphHopperStorage().getNodes();
             logger.info("edges: " + Helper.nf(getGraphHopperStorage().getAllEdges().length()) + ", nodes " + Helper.nf(currNodeCount)
                     + ", there were " + Helper.nf(preparation.getMaxSubnetworks())
