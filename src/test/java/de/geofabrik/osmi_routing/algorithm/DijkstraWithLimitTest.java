@@ -1,7 +1,6 @@
 package de.geofabrik.osmi_routing.algorithm;
 
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
 
 import org.junit.Test;
 
@@ -12,7 +11,7 @@ import com.graphhopper.util.DistanceCalc2D;
 import com.graphhopper.util.PointList;
 import com.graphhopper.util.shapes.GHPoint;
 
-import de.geofabrik.osmi_routing.AllRoadsFlagEncoder;
+import de.geofabrik.osmi_routing.flag_encoders.AllRoadsFlagEncoder;
 import de.geofabrik.osmi_routing.algorithm.DijkstraWithLimits;
 
 public class DijkstraWithLimitTest {
