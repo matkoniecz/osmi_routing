@@ -282,6 +282,14 @@ public class UnconnectedFinder implements Runnable {
             if (neighboursOfAdjNode.contains(r.getClosestNode())) {
                 continue;
             }
+            // Check if matched edge is on same level
+            int endMinLevel = encoder.getLevel(firstEdge);
+            int endMaxLevel = endMinLevel + encoder.getLevelDiff(firstEdge);
+            int foundMinLevel = encoder.getLevel(r.getClosestEdge());
+            int foundMaxLevel = foundMinLevel + encoder.getLevelDiff(r.getClosestEdge());
+            if (foundMinLevel > endMaxLevel && foundMaxLevel < endMinLevel) {
+                continue;
+            }
             double distance = r.getQueryDistance();
             if (distance > 0 && distance < distanceClosest) {
                 distanceClosest = distance;
