@@ -34,8 +34,11 @@ import org.apache.logging.log4j.Logger;
 import com.graphhopper.reader.DataReader;
 import com.graphhopper.reader.osm.GraphHopperOSM;
 import com.graphhopper.reader.osm.OSMReader;
+import com.graphhopper.routing.util.BikeFlagEncoder;
+import com.graphhopper.routing.util.CarFlagEncoder;
 import com.graphhopper.routing.util.EncodingManager;
 import com.graphhopper.routing.util.FlagEncoder;
+import com.graphhopper.routing.util.FootFlagEncoder;
 import com.graphhopper.storage.GraphHopperStorage;
 import com.graphhopper.util.Helper;
 
@@ -67,9 +70,13 @@ public class GraphHopperSimple extends GraphHopperOSM {
         // Disable sorting of graph because that would overwrite the values stored in the additional properties field of the graph.
         setSortGraph(false);
         AllRoadsFlagEncoder encoder = new AllRoadsFlagEncoder();
+        CarFlagEncoder carEncoder = new CarFlagEncoder(3, 25, 1);
+        BikeFlagEncoder bicycleEncoder = new BikeFlagEncoder(2, 8, 0);
         outputDirectory = args[2];
-        List<FlagEncoder> encoders = new ArrayList<FlagEncoder>(1);
+        List<FlagEncoder> encoders = new ArrayList<FlagEncoder>(4);
         encoders.add(encoder);
+        encoders.add(carEncoder);
+        encoders.add(bicycleEncoder);
         EncodingManager.Builder emBuilder = EncodingManager.createBuilder(encoders, 4);
         emBuilder.setEnableInstructions(false);
         setEncodingManager(emBuilder.build());

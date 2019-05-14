@@ -153,7 +153,7 @@ public class AllRoadsFlagEncoder extends AbstractFlagEncoder {
     private BooleanEncodedValue privateEncoder;
 
     public AllRoadsFlagEncoder() {
-        super(2, 5, 0);
+        super(1, 10, 0);
         init();
         setBlockFords(false);
     }

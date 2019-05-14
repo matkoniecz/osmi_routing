@@ -28,6 +28,7 @@ import java.text.DecimalFormatSymbols;
 import java.util.List;
 import java.util.Locale;
 
+import com.graphhopper.routing.util.FlagEncoder;
 import com.graphhopper.util.PointList;
 import com.graphhopper.util.shapes.GHPoint;
 
@@ -142,7 +143,7 @@ public class GeoJSONWriter {
         close();
     }
 
-    public void writeEdge(PointList geom, RemoveAndDumpSubnetworks.SubnetworkType type, long osmId) throws IOException {
+    public void writeEdge(PointList geom, RemoveAndDumpSubnetworks.SubnetworkType type, long osmId, FlagEncoder encoder) throws IOException {
         StringBuilder out = new StringBuilder(900);
         if (!firstFeature) {
             out.append(",\n");
@@ -161,7 +162,9 @@ public class GeoJSONWriter {
 
         out.append("\", \"way_id\": ");
         out.append(osmId);
-        out.append("}, \"geometry\":{\"type\":\"LineString\",\"coordinates\":[");
+        out.append(", \"vehicle\": \"");
+        out.append(encoder.toString());
+        out.append("\"}, \"geometry\":{\"type\":\"LineString\",\"coordinates\":[");
         boolean firstPoint = true;
         for (GHPoint p : geom) {
             if (!firstPoint) {
