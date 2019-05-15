@@ -45,6 +45,7 @@ import de.geofabrik.osmi_routing.flag_encoders.SimpleBikeFlagEncoder;
 import de.geofabrik.osmi_routing.reader.BarriersHook;
 import de.geofabrik.osmi_routing.reader.NoExitHook;
 import de.geofabrik.osmi_routing.subnetworks.RemoveAndDumpSubnetworks;
+import net.sourceforge.argparse4j.inf.Namespace;
 
 
 public class GraphHopperSimple extends GraphHopperOSM {
@@ -58,20 +59,20 @@ public class GraphHopperSimple extends GraphHopperOSM {
     String outputDirectory;
     UnconnectedFinderManager unconnectedFinderManager;
 
-    public GraphHopperSimple(String args[]) throws IOException {
+    public GraphHopperSimple(Namespace args) throws IOException {
         super();
         nodeInfoStore = new OsmIdAndNoExitStore(getGraphHopperLocation());
         hook = new NoExitHook(nodeInfoStore);
         barriersHook = new BarriersHook();
-        setDataReaderFile(args[0]);
-        setGraphHopperLocation(args[1]);
+        setDataReaderFile(args.getString("input_file"));
+        setGraphHopperLocation(args.getString("graph_directory"));
         setCHEnabled(false);
         // Disable sorting of graph because that would overwrite the values stored in the additional properties field of the graph.
         setSortGraph(false);
         AllRoadsFlagEncoder encoder = new AllRoadsFlagEncoder();
         CarFlagEncoder carEncoder = new CarFlagEncoder(2, 50, 1);
         SimpleBikeFlagEncoder bicycleEncoder = new SimpleBikeFlagEncoder();
-        outputDirectory = args[2];
+        outputDirectory = args.getString("output_directory");
         List<FlagEncoder> encoders = new ArrayList<FlagEncoder>(4);
         encoders.add(encoder);
         encoders.add(carEncoder);
@@ -79,8 +80,8 @@ public class GraphHopperSimple extends GraphHopperOSM {
         EncodingManager.Builder emBuilder = EncodingManager.createBuilder(encoders, 4);
         emBuilder.setEnableInstructions(false);
         setEncodingManager(emBuilder.build());
-        double maxDistance = (args.length >= 4) ? Double.parseDouble(args[3]) : 10;
-        int workers = (args.length == 5) ? Integer.parseInt(args[4]) : 2;
+        double maxDistance = args.getDouble("radius");
+        int workers = args.getInt("worker_threads");
         try {
             java.nio.file.Path outputFileNameConnections = Paths.get(outputDirectory, "unconnected_nodes.json"); 
             unconnectedFinderManager = new UnconnectedFinderManager(this, encoder, outputFileNameConnections, maxDistance, workers);

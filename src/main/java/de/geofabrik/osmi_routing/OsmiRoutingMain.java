@@ -20,6 +20,11 @@ package de.geofabrik.osmi_routing;
 
 import org.apache.logging.log4j.Logger;
 
+import net.sourceforge.argparse4j.ArgumentParsers;
+import net.sourceforge.argparse4j.inf.ArgumentParser;
+import net.sourceforge.argparse4j.inf.ArgumentParserException;
+import net.sourceforge.argparse4j.inf.Namespace;
+
 import java.io.IOException;
 
 import org.apache.logging.log4j.LogManager;
@@ -35,13 +40,32 @@ public class OsmiRoutingMain {
     GraphHopperSimple hopper;
 
     public static void main(String[] args) {
-        if (args.length < 3 || args.length > 5) {
-            System.err.println("ERROR: too few arguments.\nUsage: PROGRAM_NAME INFILE TMP_DIR OUTPUT_DIRECTORY [RADIUS [WORKERS]]");
+        ArgumentParser parser = ArgumentParsers.newFor("osmi_routing").build()
+                .defaultHelp(true)
+                .description("Find potential routing errors in OpenStreetMap data");
+        parser.addArgument("-r", "--radius")
+                .type(Double.class)
+                .setDefault(15)
+                .help("search radius for missing connections");
+        parser.addArgument("-w", "--worker-threads")
+                .type(Integer.class)
+                .setDefault(2)
+                .help("search radius for missing connections");
+        parser.addArgument("input_file").help("input file");
+        parser.addArgument("graph_directory").help("directory where to store graph");
+        parser.addArgument("output_directory").help("output directory");
+
+        Namespace ns = null;
+        try {
+            ns = parser.parseArgs(args);
+        } catch (ArgumentParserException e) {
+            parser.handleError(e);
             System.exit(1);
         }
+
         GraphHopperSimple hopper;
         try {
-            hopper = (GraphHopperSimple) new GraphHopperSimple(args).forServer();
+            hopper = (GraphHopperSimple) new GraphHopperSimple(ns).forServer();
             hopper.run();
         } catch (IOException e) {
             e.printStackTrace();
