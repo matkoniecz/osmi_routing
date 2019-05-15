@@ -23,6 +23,8 @@
 package de.geofabrik.osmi_routing.subnetworks;
 
 import java.io.IOException;
+import java.nio.file.Paths;
+import java.util.ArrayList;
 import java.util.List;
 
 import org.apache.logging.log4j.LogManager;
@@ -33,7 +35,6 @@ import com.carrotsearch.hppc.IntIndexedContainer;
 import com.graphhopper.routing.profiles.BooleanEncodedValue;
 import com.graphhopper.routing.subnetwork.PrepareRoutingSubnetworks;
 import com.graphhopper.routing.subnetwork.TarjansSCCAlgorithm;
-import com.graphhopper.routing.subnetwork.PrepareRoutingSubnetworks.PrepEdgeFilter;
 import com.graphhopper.routing.util.DefaultEdgeFilter;
 import com.graphhopper.routing.util.EdgeFilter;
 import com.graphhopper.routing.util.FlagEncoder;
@@ -51,17 +52,25 @@ public class RemoveAndDumpSubnetworks extends PrepareRoutingSubnetworks {
 
     static final Logger logger = LogManager.getLogger(UnconnectedFinderManager.class.getName());
 
-    GeoJSONWriter writer;
+    List<GeoJSONWriter> writers;
+    int currentWriter;
     OsmIdStore edgeIdToWayId;
 
     public RemoveAndDumpSubnetworks(GraphHopperStorage ghStorage, List<FlagEncoder> encoders, java.nio.file.Path path, OsmIdStore edgeIdToWayId) throws IOException {
         super(ghStorage, encoders, false);
-        this.writer = new GeoJSONWriter(path);
+        this.writers = new ArrayList<GeoJSONWriter>(encoders.size());
+        for (FlagEncoder e : encoders) {
+            java.nio.file.Path destination = path.resolve("subnetworks_" + e.toString() + ".json");
+            this.writers.add(new GeoJSONWriter(destination));
+        }
+        this.currentWriter = 0;
         this.edgeIdToWayId = edgeIdToWayId;
     }
 
     public void close() throws IOException {
-        this.writer.close();
+        for (GeoJSONWriter w : writers) {
+            w.close();
+        }
     }
 
     public void doWork() {
@@ -70,7 +79,8 @@ public class RemoveAndDumpSubnetworks extends PrepareRoutingSubnetworks {
 
         logger.info("start finding subnetworks (min:" + getMinNetworkSize() + ", min one way:" + getMinOneWayNetworkSize() + ") " + Helper.getMemInfo());
         int unvisitedDeadEnds = 0;
-        for (FlagEncoder encoder : getEncoders()) {
+        for (currentWriter = 0; currentWriter < getEncoders().size(); ++currentWriter) {
+            FlagEncoder encoder = getEncoders().get(currentWriter);
             // mark edges for one vehicle as inaccessible
             PrepEdgeFilterWithEncoder filter = new PrepEdgeFilterWithEncoder(encoder);
             if (getMinOneWayNetworkSize() > 0)
@@ -176,7 +186,7 @@ public class RemoveAndDumpSubnetworks extends PrepareRoutingSubnetworks {
                 while (edge.next()) {
                     edge.set(accessEnc, false).setReverse(accessEnc, false);
                     try {
-                        writer.writeEdge(edge.fetchWayGeometry(3), type, edgeIdToWayId.getOsmId(edge.getEdge()), encoder);
+                        writers.get(currentWriter).writeEdge(edge.fetchWayGeometry(3), type, edgeIdToWayId.getOsmId(edge.getEdge()), encoder);
                     } catch (IOException e) {
                         logger.catching(e);
                         System.exit(1);

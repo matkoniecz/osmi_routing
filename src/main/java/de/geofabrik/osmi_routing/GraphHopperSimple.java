@@ -99,7 +99,7 @@ public class GraphHopperSimple extends GraphHopperOSM {
     @Override
     protected void cleanUp() {
         try {
-            java.nio.file.Path outputFileNameSubnetworks = Paths.get(outputDirectory, "subnetworks.json"); 
+            java.nio.file.Path outputFileNameSubnetworks = Paths.get(outputDirectory);
             int prevNodeCount = getGraphHopperStorage().getNodes();
             RemoveAndDumpSubnetworks preparation = new RemoveAndDumpSubnetworks(getGraphHopperStorage(), getEncodingManager().fetchEdgeEncoders(), outputFileNameSubnetworks, edgeMapping);
             preparation.setMinNetworkSize(getMinNetworkSize());
