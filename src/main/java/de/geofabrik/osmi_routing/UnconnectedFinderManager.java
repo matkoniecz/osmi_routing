@@ -55,6 +55,7 @@ public class UnconnectedFinderManager {
         private GraphHopperStorage storage;
         OsmIdAndNoExitStore nodeInfoStore;
         BarriersHook barriersHook;
+        boolean doRouting;
         AllRoadsFlagEncoder encoder;
         GeoJSONWriter writer;
         private double maxDistance;
@@ -200,7 +201,7 @@ public class UnconnectedFinderManager {
                 
                 UnconnectedFinder f = new UnconnectedFinder(hopper, encoder, maxDistance, storage,
                         new ThreadSafeOsmIdNoExitStoreAccessor(nodeInfoStore), barriersHook, listener, startId,
-                        count, priorities);
+                        count, priorities, doRouting);
                 executorService.execute(f);
                 sendResultsToSink(threadCount - 1);
             }
@@ -226,10 +227,12 @@ public class UnconnectedFinderManager {
             
         }
 
-        public void init(GraphHopperStorage graphHopperStorage, OsmIdAndNoExitStore infoStore, BarriersHook barriersHook) {
+        public void init(GraphHopperStorage graphHopperStorage, OsmIdAndNoExitStore infoStore, BarriersHook barriersHook,
+                boolean doRouting) {
             this.storage = graphHopperStorage;
             this.nodeInfoStore = infoStore;
             this.barriersHook = barriersHook;
+            this.doRouting = doRouting;
         }
 
 }

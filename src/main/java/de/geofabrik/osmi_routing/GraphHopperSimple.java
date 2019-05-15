@@ -58,6 +58,7 @@ public class GraphHopperSimple extends GraphHopperOSM {
     private OsmIdStore edgeMapping;
     String outputDirectory;
     UnconnectedFinderManager unconnectedFinderManager;
+    boolean doRouting;
 
     public GraphHopperSimple(Namespace args) throws IOException {
         super();
@@ -66,6 +67,7 @@ public class GraphHopperSimple extends GraphHopperOSM {
         barriersHook = new BarriersHook();
         setDataReaderFile(args.getString("input_file"));
         setGraphHopperLocation(args.getString("graph_directory"));
+        doRouting = args.getBoolean("do_routing");
         setCHEnabled(false);
         // Disable sorting of graph because that would overwrite the values stored in the additional properties field of the graph.
         setSortGraph(false);
@@ -135,7 +137,7 @@ public class GraphHopperSimple extends GraphHopperOSM {
         importOrLoad();
         hook.releaseNoExitSet();
         barriersHook.prepareForQuery();
-        unconnectedFinderManager.init(getGraphHopperStorage(), nodeInfoStore, barriersHook);
+        unconnectedFinderManager.init(getGraphHopperStorage(), nodeInfoStore, barriersHook, doRouting);
         unconnectedFinderManager.run();
         close();
     }

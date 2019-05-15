@@ -69,11 +69,13 @@ public class UnconnectedFinder implements Runnable {
     private int startId;
     private int count;
     Map<RoadClass, int[]> priorities;
+    private boolean doRouting;
 
     public UnconnectedFinder(GraphHopperSimple hopper, AllRoadsFlagEncoder encoder,
             double maxDistance, GraphHopperStorage graphhopperStorage,
             ThreadSafeOsmIdNoExitStoreAccessor infoStore, BarriersHook barriersHook,
-            OutputListener listener, int start, int count, Map<RoadClass, int[]> priorities) {
+            OutputListener listener, int start, int count, Map<RoadClass, int[]> priorities,
+            boolean doRouting) {
         this.encoder = encoder;
         this.maxDistance = maxDistance;
         this.angleCalc = new AngleCalc();
@@ -86,6 +88,7 @@ public class UnconnectedFinder implements Runnable {
         this.startId = start;
         this.count = count;
         this.priorities = priorities;
+        this.doRouting = doRouting;
     }
 
     public boolean ready() {
@@ -294,7 +297,7 @@ public class UnconnectedFinder implements Runnable {
         }
         // ratio between distance over graph and beeline; ratios within the range (1.0,4.0) are
         // an indicator for false positives.
-        double distanceOnGraph = getDistanceOnGraph(id, fromPoints.toGHPoint(0), closestResult);
+        double distanceOnGraph = doRouting ? getDistanceOnGraph(id, fromPoints.toGHPoint(0), closestResult) : 0;
         GHPoint queryPoint = closestResult.getQueryPoint();
         GHPoint snappedPoint = closestResult.getSnappedPoint();
         double[] angleDiff = getAngleDiff(firstEdge, closestResult);

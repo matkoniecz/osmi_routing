@@ -21,6 +21,7 @@ package de.geofabrik.osmi_routing;
 import org.apache.logging.log4j.Logger;
 
 import net.sourceforge.argparse4j.ArgumentParsers;
+import net.sourceforge.argparse4j.impl.Arguments;
 import net.sourceforge.argparse4j.inf.ArgumentParser;
 import net.sourceforge.argparse4j.inf.ArgumentParserException;
 import net.sourceforge.argparse4j.inf.Namespace;
@@ -43,6 +44,9 @@ public class OsmiRoutingMain {
         ArgumentParser parser = ArgumentParsers.newFor("osmi_routing").build()
                 .defaultHelp(true)
                 .description("Find potential routing errors in OpenStreetMap data");
+        parser.addArgument("-d", "--do-routing")
+                .action(Arguments.storeTrue())
+                .help("calculate quotient of distance over graph and beeline for all missing connections");
         parser.addArgument("-r", "--radius")
                 .type(Double.class)
                 .setDefault(15)

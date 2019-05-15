@@ -89,8 +89,10 @@ public class GeoJSONWriter {
         }
         out.append(", \"distance\": ");
         out.append(df2.format(m.getDistance()));
-        out.append(", \"ratio\": ");
-        out.append(df2.format(m.getRatio()));
+        if (m.getRatio() != 0) {
+            out.append(", \"ratio\": ");
+            out.append(df2.format(m.getRatio()));
+        }
         out.append(", \"angle1\": ");
         out.append(df1.format(m.getAngles()[0]));
         out.append(", \"angle2\": ");
@@ -108,8 +110,10 @@ public class GeoJSONWriter {
 
         out.append("{\"type\":\"Feature\",\"properties\":{\"type\": \"snap point\", \"distance\": ");
         out.append(df2.format(m.getDistance()));
-        out.append(", \"ratio\": ");
-        out.append(df2.format(m.getRatio()));
+        if (m.getRatio() != 0) {
+            out.append(", \"ratio\": ");
+            out.append(df2.format(m.getRatio()));
+        }
         out.append(", \"angle1\": ");
         out.append(df1.format(m.getAngles()[0]));
         out.append(", \"angle2\": ");
