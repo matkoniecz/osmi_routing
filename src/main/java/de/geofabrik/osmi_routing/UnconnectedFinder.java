@@ -268,6 +268,9 @@ public class UnconnectedFinder implements Runnable {
         double distanceClosest = Double.MAX_VALUE;
         QueryResult closestResult = null;
         // iterate over results
+        boolean endLevelValid = encoder.isLevelValid(firstEdge);
+        int endMinLevel = encoder.getLevel(firstEdge);
+        int endMaxLevel = encoder.getLevelDiff(firstEdge);
         for (QueryResult r : result) {
             EdgeIteratorState foundEdge = r.getClosestEdge();
             // Check if the matched edge is the only edge connected to our node.
@@ -283,12 +286,12 @@ public class UnconnectedFinder implements Runnable {
                 continue;
             }
             // Check if matched edge is on same level
-            int endMinLevel = encoder.getLevel(firstEdge);
-            int endMaxLevel = endMinLevel + encoder.getLevelDiff(firstEdge);
-            int foundMinLevel = encoder.getLevel(r.getClosestEdge());
-            int foundMaxLevel = foundMinLevel + encoder.getLevelDiff(r.getClosestEdge());
-            if (foundMinLevel > endMaxLevel && foundMaxLevel < endMinLevel) {
-                continue;
+            if (endLevelValid && encoder.isLevelValid(r.getClosestEdge())) {
+                int foundMinLevel = encoder.getLevel(r.getClosestEdge());
+                int foundMaxLevel = foundMinLevel + encoder.getLevelDiff(r.getClosestEdge());
+                if (foundMinLevel > endMaxLevel || foundMaxLevel < endMinLevel) {
+                    continue;
+                }
             }
             double distance = r.getQueryDistance();
             if (distance > 0 && distance < distanceClosest) {

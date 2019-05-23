@@ -41,6 +41,7 @@ import com.graphhopper.storage.IntsRef;
 import com.graphhopper.util.EdgeIteratorState;
 
 import de.geofabrik.osmi_routing.flag_encoders.AllRoadsFlagEncoder.RoadClass;
+import de.geofabrik.osmi_routing.flag_encoders.properties.LevelEncoder;
 
 public class AllRoadsFlagEncoder extends AbstractFlagEncoder {
     
@@ -154,19 +155,7 @@ public class AllRoadsFlagEncoder extends AbstractFlagEncoder {
 
     private EnumEncodedValue<RoadClass> roadClassEncoder;
     private BooleanEncodedValue privateEncoder;
-    /**
-     * Encode lowest value of level=* tag.
-     * Minimal supported value is -5.
-     */
-    private IntEncodedValue minLevelEncoder;
-    private final int minLevel = -5;
-
-    /**
-     * Encode difference between minimal and maximal value of level=*.
-     */
-    private IntEncodedValue levelDiffEncoder;
-    private final int maxDiff = 1;
-    private final int levelBits = 4;
+    private LevelEncoder levelEncoder;
 
     public AllRoadsFlagEncoder() {
         super(1, 10, 0);
@@ -190,8 +179,8 @@ public class AllRoadsFlagEncoder extends AbstractFlagEncoder {
         registerNewEncodedValue.add(speedEncoder = new FactorizedDecimalEncodedValue(prefix + "average_speed", speedBits, speedFactor, false));
         registerNewEncodedValue.add(roadClassEncoder = new EnumEncodedValue<RoadClass>("road_class", RoadClass.class));
         registerNewEncodedValue.add(privateEncoder = new SimpleBooleanEncodedValue("private_access"));
-        registerNewEncodedValue.add(minLevelEncoder = new SimpleIntEncodedValue("min_level", levelBits, true));
-        registerNewEncodedValue.add(levelDiffEncoder = new SimpleIntEncodedValue("level_diff", 1, true));
+        levelEncoder = new LevelEncoder();
+        registerNewEncodedValue = levelEncoder.register(registerNewEncodedValue);
     }
 
     @Override
@@ -214,70 +203,6 @@ public class AllRoadsFlagEncoder extends AbstractFlagEncoder {
             return EncodingManager.Access.FERRY;
         }
         return EncodingManager.Access.WAY;
-    }
-
-    public int getLevelFromEncodedInt(int encoded) {
-        return encoded + minLevel;
-    }
-
-    public int getLevel(EdgeIteratorState state) {
-        int encoded = minLevelEncoder.getInt(true, state.getFlags());
-        return getLevelFromEncodedInt(encoded);
-    }
-
-    public int getLevelDiff(EdgeIteratorState state) {
-        return levelDiffEncoder.getInt(true, state.getFlags());
-    }
-
-    public int encodedIntForLevel(int level) {
-        int enc = level - minLevel;
-        // return valid values only
-        enc = Math.min((2 << levelBits) - 1, enc);
-        enc = Math.max(enc, minLevel);
-        return enc;
-    }
-
-    public IntsRef setEmptyLevel(IntsRef flags) {
-        minLevelEncoder.setInt(true, flags, encodedIntForLevel(0));
-        levelDiffEncoder.setInt(true, flags, 0);
-        return flags;
-    }
-
-    /**
-     * Set minimum and maximum level
-     * @param value tag value of level=*
-     * @return modified edge flags
-     */
-    public IntsRef setLevel(String value, IntsRef flags) {
-        // no level=* tag set
-        if (value == null || value.equals("")) {
-            return setEmptyLevel(flags);
-        }
-        String[] levelStrs = value.split(";");
-        int minValue = 100;
-        int maxValue = -100;
-        for (int i = 0; i < levelStrs.length; ++i) {
-            try {
-                // silently accept decimal values but truncate all decimals
-                int v = (int) Double.parseDouble(levelStrs[i]);
-                if (minValue > v) {
-                    minValue = v;
-                }
-                if (maxValue < v) {
-                    maxValue = v;
-                }
-            } catch (NumberFormatException e) {
-                // If parsing failed, treat as empty level
-                return setEmptyLevel(flags);
-            }
-        }
-        if (maxValue > minValue + maxDiff) {
-            // difference larger than 1, cannot be encoded and therefore the whole value is discarded
-            return setEmptyLevel(flags);
-        }
-        minLevelEncoder.setInt(true, flags, encodedIntForLevel(minValue));
-        levelDiffEncoder.setInt(true, flags, maxValue - minValue);
-        return flags;
     }
 
     @Override
@@ -304,8 +229,23 @@ public class AllRoadsFlagEncoder extends AbstractFlagEncoder {
         accessEnc.setBool(true, edgeFlags, true);
         // encode level
         String level = way.getTag("level");
-        edgeFlags = setLevel(level, edgeFlags);
+        if (level == null) {
+            level = way.getTag("layer");
+        }
+        edgeFlags = levelEncoder.setLevel(level, edgeFlags);
         return edgeFlags;
+    }
+
+    public boolean isLevelValid(EdgeIteratorState state) {
+        return levelEncoder.isLevelValid(state.getFlags());
+    }
+
+    public int getLevelDiff(EdgeIteratorState state) {
+        return levelEncoder.getLevelDiff(state.getFlags());
+    }
+
+    public int getLevel(EdgeIteratorState state) {
+        return levelEncoder.getLevel(state.getFlags());
     }
 
     public RoadClass getRoadClass(EdgeIteratorState state) {
