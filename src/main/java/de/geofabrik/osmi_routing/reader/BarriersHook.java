@@ -102,9 +102,9 @@ public class BarriersHook extends OSMReaderHook {
      */
     public boolean crossesBarrier(double lon1, double lat1, double lon2, double lat2) {
         double minLon = Math.min(lon1, lon2);
-        double maxLon = Math.min(lon1, lon2);
+        double maxLon = Math.max(lon1, lon2);
         double minLat = Math.min(lat1, lat2);
-        double maxLat = Math.min(lat1, lat2);
+        double maxLat = Math.max(lat1, lat2);
         Coordinate[] lineCoords = {new Coordinate(lon1, lat1), new Coordinate(lon2, lat2)};
         LineString queryLine = geomFactory.createLineString(lineCoords);
         Envelope envelope = new Envelope(minLon, maxLon, minLat, maxLat);
