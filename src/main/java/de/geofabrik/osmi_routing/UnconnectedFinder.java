@@ -105,18 +105,13 @@ public class UnconnectedFinder implements Runnable {
      *
      * @param angle1 in degrees
      * @param angle2 in degrees
-     * @param matchPosition match type returned by QueryResult.getSnappedPosition
      */
-    private static double normaliseAngle(double angle1, double angle2, QueryResult.Position matchPosition) {
-        if (matchPosition == QueryResult.Position.EDGE) {
-            double result = Math.max(angle1, angle2) - Math.min(angle1, angle2);
-            return Math.min(result, 180 - result);
-        }
-        return Math.max(angle1, angle2) - Math.min(angle1, angle2);
+    private static double normaliseAngle(double angle1, double angle2) {
+        double result = Math.max(angle1, angle2) - Math.min(angle1, angle2);
+        return Math.min(result, 360 - result);
     }
 
-    private double[] getAngleDiff(EdgeIteratorState openEnd, QueryResult matched) throws IllegalStateException {
-        double[] result = {-720, 720};
+    private double getAngleDiff(EdgeIteratorState openEnd, QueryResult matched) throws IllegalStateException {
         QueryResult.Position matchType = matched.getSnappedPosition();
         NodeAccess nodeAccess = storage.getNodeAccess();
         // Get the two locations of the matched edge to calculate its orientation.
@@ -129,14 +124,13 @@ public class UnconnectedFinder implements Runnable {
         switch (matchType) {
         case TOWER :
             int wayIndex = matched.getWayIndex();
-            PointList points = matched.getClosestEdge().fetchWayGeometry(2);
+            PointList points = matched.getClosestEdge().fetchWayGeometry(3);
             if (wayIndex == 0) {
-                // index of PointList.toGHPoint() is 0 because the PointList is retrieved without the base node
-                matchedLat1 = points.getLat(0);
-                matchedLon1 = points.getLon(0);
+                matchedLat1 = points.getLat(1);
+                matchedLon1 = points.getLon(1);
             } else {
-                matchedLat1 = points.getLat(points.size() - 1);
-                matchedLon1 = points.getLon(points.size() - 1);
+                matchedLat1 = points.getLat(points.size() - 2);
+                matchedLon1 = points.getLon(points.size() - 2);
             }
             break;
         case EDGE:
@@ -150,7 +144,6 @@ public class UnconnectedFinder implements Runnable {
             matchedLon1 = allPoints.getLon(matchingI);
             matchedLat3 = allPoints.getLat(matchingI + 1);
             matchedLon3 = allPoints.getLon(matchingI + 1);
-
             break;
         case PILLAR:
         default:
@@ -167,7 +160,6 @@ public class UnconnectedFinder implements Runnable {
         double orientationMatched12 = angleCalc.calcOrientation(matchedLat1, matchedLon1, matchedLat2, matchedLon2, false);
         double orientationMatched23 = angleCalc.calcOrientation(matchedLat2, matchedLon2, matchedLat3, matchedLon3, false);
 
-
         double openEndLat1 = nodeAccess.getLat(openEnd.getBaseNode());
         double openEndLon1 = nodeAccess.getLon(openEnd.getBaseNode());
         PointList pointsAll = openEnd.fetchWayGeometry(2);
@@ -176,13 +168,11 @@ public class UnconnectedFinder implements Runnable {
         double openEndLon2 = pointsAll.getLon(0);
         double orientationOpenEnd = angleCalc.calcOrientation(openEndLat1, openEndLon1, openEndLat2, openEndLon2, false);
         if (matchType != QueryResult.Position.PILLAR) {
-            result[0] = normaliseAngle(Math.toDegrees(orientationMatched12), Math.toDegrees(orientationOpenEnd), matchType);
-            result[1] = normaliseAngle(Math.toDegrees(orientationMatched12), Math.toDegrees(orientationOpenEnd), matchType);
+            return normaliseAngle(Math.toDegrees(orientationMatched12), Math.toDegrees(orientationOpenEnd)/*, matchType*/);
         } else {
-            result[0] = normaliseAngle(Math.toDegrees(orientationMatched12), Math.toDegrees(orientationOpenEnd), matchType);
-            result[1] = normaliseAngle(Math.toDegrees(orientationMatched23), Math.toDegrees(orientationOpenEnd), matchType);
+            return 0.5 * (normaliseAngle(Math.toDegrees(orientationMatched12), Math.toDegrees(orientationOpenEnd))
+                    + normaliseAngle(Math.toDegrees(orientationMatched23), Math.toDegrees(orientationOpenEnd)));
         }
-        return result;
     }
 
     private Double getDistanceOnGraph(int fromNodeId, GHPoint fromLocation, QueryResult closestResult) {
@@ -208,6 +198,50 @@ public class UnconnectedFinder implements Runnable {
             priority += 1;
         }
         return priority;
+    }
+
+    /**
+     * Get increment or decrement for error importance class.
+     *
+     * This is calculated based on the following two angles: between the open end edge and the
+     * connection line and the difference of the orientation of the open end and the matched edge.
+     */
+    private int getImportanceDecrement(RoadClass roadClass, EdgeIteratorState openEnd, QueryResult queryResult) {
+        if (roadClass != RoadClass.FOOTWAY && roadClass != RoadClass.PATH
+                && roadClass != RoadClass.SERVICE_PARKING_AISLE && roadClass != RoadClass.SERVICE_DRIVEWAY
+                && roadClass != RoadClass.STEPS) {
+            return 0;
+        }
+
+        // Get orientation of the open end
+        double openEndLat1 = storage.getNodeAccess().getLat(openEnd.getBaseNode());
+        double openEndLon1 = storage.getNodeAccess().getLon(openEnd.getBaseNode());
+        PointList pointsAll = openEnd.fetchWayGeometry(2);
+        // index of PointList.toGHPoint() is 0 because the PointList is retrieved without the base node
+        double openEndLat2 = pointsAll.getLat(0);
+        double openEndLon2 = pointsAll.getLon(0);
+        double orientationOpenEnd = Math.toDegrees(angleCalc.calcOrientation(openEndLat1, openEndLon1, openEndLat2, openEndLon2, false));
+
+        // Get orientation of the connection line.
+        double matchedPointLon = queryResult.getSnappedPoint().lon;
+        double matchedPointLat = queryResult.getSnappedPoint().lat;
+        double orientationConnection = Math.toDegrees(angleCalc.calcOrientation(openEndLat1, openEndLon1, matchedPointLat, matchedPointLon));
+
+        // Get 0 <= alpha <= 360
+        double openEndConnectionAngle = Math.abs(orientationOpenEnd - orientationConnection);
+        // Get 0 <= alpha <= 180
+        if (openEndConnectionAngle > 180) {
+            openEndConnectionAngle = 360 - openEndConnectionAngle;
+        }
+        openEndConnectionAngle = Math.min(openEndConnectionAngle, 180 - openEndConnectionAngle);
+
+        // Get angle between open end and matched edge
+        double angleBetweenEdges = getAngleDiff(openEnd, queryResult);
+        angleBetweenEdges = Math.min(angleBetweenEdges, 180 - angleBetweenEdges);
+        if (openEndConnectionAngle >= 86 && openEndConnectionAngle <= 90 && angleBetweenEdges <= 4) {
+            return 1;
+        }
+        return 0;
     }
 
     private void checkNode(int id) throws IOException, IllegalStateException {
@@ -311,10 +345,10 @@ public class UnconnectedFinder implements Runnable {
         double distanceOnGraph = doRouting ? getDistanceOnGraph(id, fromPoints.toGHPoint(0), closestResult) : 0;
         GHPoint queryPoint = closestResult.getQueryPoint();
         GHPoint snappedPoint = closestResult.getSnappedPoint();
-        double[] angleDiff = getAngleDiff(firstEdge, closestResult);
         int priority = getPriority(roadClass, isPrivate, distanceClosest);
+        priority += getImportanceDecrement(roadClass, firstEdge, closestResult);
         results.add(new MissingConnection(queryPoint, snappedPoint, distanceClosest,
-                distanceOnGraph, id, angleDiff, osmId,
+                distanceOnGraph, id, osmId,
                 closestResult.getSnappedPosition(), roadClass, isPrivate, priority));
     }
 

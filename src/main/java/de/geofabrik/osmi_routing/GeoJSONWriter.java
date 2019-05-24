@@ -93,10 +93,6 @@ public class GeoJSONWriter {
             out.append(", \"ratio\": ");
             out.append(df2.format(m.getRatio()));
         }
-        out.append(", \"angle1\": ");
-        out.append(df1.format(m.getAngles()[0]));
-        out.append(", \"angle2\": ");
-        out.append(df1.format(m.getAngles()[1]));
         out.append(", \"priority\": ");
         out.append(df1.format(m.getPriority()));
         out.append(", \"node_id\": ");
@@ -114,10 +110,6 @@ public class GeoJSONWriter {
             out.append(", \"ratio\": ");
             out.append(df2.format(m.getRatio()));
         }
-        out.append(", \"angle1\": ");
-        out.append(df1.format(m.getAngles()[0]));
-        out.append(", \"angle2\": ");
-        out.append(df1.format(m.getAngles()[1]));
         out.append(", \"priority\": ");
         out.append(df1.format(m.getPriority()));
         out.append(", \"node_id\": ");
