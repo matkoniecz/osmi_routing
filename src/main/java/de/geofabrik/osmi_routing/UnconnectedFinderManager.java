@@ -116,6 +116,7 @@ public class UnconnectedFinderManager {
             priorities.put(RoadClass.RACEWAY,       new int[]{2, 2, 2, 3});
             priorities.put(RoadClass.FERRY,         new int[]{2, 3, 3, 3});
             priorities.put(RoadClass.PLATFORM,      new int[]{4, 5, 5, 6});
+            priorities.put(RoadClass.CONSTRUCTION,  new int[]{3, 4, 5, 6});
         }
 
         private void waitForUpdate() {

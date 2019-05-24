@@ -30,9 +30,7 @@ import com.graphhopper.routing.profiles.BooleanEncodedValue;
 import com.graphhopper.routing.profiles.EncodedValue;
 import com.graphhopper.routing.profiles.EnumEncodedValue;
 import com.graphhopper.routing.profiles.FactorizedDecimalEncodedValue;
-import com.graphhopper.routing.profiles.IntEncodedValue;
 import com.graphhopper.routing.profiles.SimpleBooleanEncodedValue;
-import com.graphhopper.routing.profiles.SimpleIntEncodedValue;
 import com.graphhopper.routing.util.AbstractFlagEncoder;
 import com.graphhopper.routing.util.EncodingManager;
 import com.graphhopper.routing.util.EncodingManager.Access;
@@ -40,7 +38,6 @@ import com.graphhopper.storage.GraphExtension;
 import com.graphhopper.storage.IntsRef;
 import com.graphhopper.util.EdgeIteratorState;
 
-import de.geofabrik.osmi_routing.flag_encoders.AllRoadsFlagEncoder.RoadClass;
 import de.geofabrik.osmi_routing.flag_encoders.properties.LevelEncoder;
 
 public class AllRoadsFlagEncoder extends AbstractFlagEncoder {
@@ -73,6 +70,7 @@ public class AllRoadsFlagEncoder extends AbstractFlagEncoder {
         RACEWAY("raceway"),
         STEPS("steps"),
         PLATFORM("platform"),
+        CONSTRUCTION("construction"),
         FERRY("ferry");
 
         private String value;
@@ -143,6 +141,8 @@ public class AllRoadsFlagEncoder extends AbstractFlagEncoder {
                     return RoadClass.STEPS;
                 } else if (highway.equals("platform")) {
                     return RoadClass.PLATFORM;
+                } else if (highway.equals("construction")) {
+                    return RoadClass.CONSTRUCTION;
                 }
             } else if (railway != null && railway.equals("platform")) {
                 return RoadClass.PLATFORM;
