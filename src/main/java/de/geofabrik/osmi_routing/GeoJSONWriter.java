@@ -89,10 +89,6 @@ public class GeoJSONWriter {
         }
         out.append(", \"distance\": ");
         out.append(df2.format(m.getDistance()));
-        if (m.getRatio() != 0) {
-            out.append(", \"ratio\": ");
-            out.append(df2.format(m.getRatio()));
-        }
         out.append(", \"priority\": ");
         out.append(df1.format(m.getPriority()));
         out.append(", \"node_id\": ");
@@ -106,10 +102,6 @@ public class GeoJSONWriter {
 
         out.append("{\"type\":\"Feature\",\"properties\":{\"type\": \"snap point\", \"distance\": ");
         out.append(df2.format(m.getDistance()));
-        if (m.getRatio() != 0) {
-            out.append(", \"ratio\": ");
-            out.append(df2.format(m.getRatio()));
-        }
         out.append(", \"priority\": ");
         out.append(df1.format(m.getPriority()));
         out.append(", \"node_id\": ");

@@ -40,6 +40,8 @@ import com.graphhopper.storage.index.LocationIndexTree;
 import com.graphhopper.storage.index.QueryResult;
 import com.graphhopper.storage.index.QueryResult.Position;
 import com.graphhopper.util.AngleCalc;
+import com.graphhopper.util.DistanceCalc;
+import com.graphhopper.util.DistanceCalc2D;
 import com.graphhopper.util.EdgeExplorer;
 import com.graphhopper.util.EdgeIterator;
 import com.graphhopper.util.EdgeIteratorState;
@@ -64,6 +66,7 @@ public class UnconnectedFinder implements Runnable {
     private double maxDistance;
     DijkstraWithLimits dijkstra;
     AngleCalc angleCalc;
+    DistanceCalc distanceCalc;
     private final OutputListener listener;
     private List<MissingConnection> results;
     private int startId;
@@ -79,6 +82,7 @@ public class UnconnectedFinder implements Runnable {
         this.encoder = encoder;
         this.maxDistance = maxDistance;
         this.angleCalc = new AngleCalc();
+        this.distanceCalc = new DistanceCalc2D();
         this.storage = graphhopperStorage;
         this.dijkstra = new DijkstraWithLimits(this.storage, 80, this.maxDistance);
         this.index = (LocationIndexTree) hopper.getLocationIndex();
@@ -175,7 +179,7 @@ public class UnconnectedFinder implements Runnable {
         }
     }
 
-    private Double getDistanceOnGraph(int fromNodeId, GHPoint fromLocation, QueryResult closestResult) {
+    private Double getDistanceOnGraph(int fromNodeId, QueryResult closestResult) {
         if (closestResult.getSnappedPosition() == QueryResult.Position.TOWER) {
             DijkstraWithLimits.Result result = dijkstra.route(fromNodeId, closestResult.getClosestNode());
             return result.distance;
@@ -203,8 +207,12 @@ public class UnconnectedFinder implements Runnable {
     /**
      * Get increment or decrement for error importance class.
      *
-     * This is calculated based on the following two angles: between the open end edge and the
-     * connection line and the difference of the orientation of the open end and the matched edge.
+     * For parking aisles and driveways: If the angle between the open end and the connection is
+     * nearly 90° and the difference of the normalised orientation of both edges is nearly 0°,
+     * the priority is reduced by 1.
+     *
+     * For footways, paths and steps: The priority is reduced by 1 if the conditions above apply
+     * (but larger thresholds) and the distances is larger than the length of the edge. 
      */
     private int getImportanceDecrement(RoadClass roadClass, EdgeIteratorState openEnd, QueryResult queryResult) {
         if (roadClass != RoadClass.FOOTWAY && roadClass != RoadClass.PATH
@@ -238,8 +246,28 @@ public class UnconnectedFinder implements Runnable {
         // Get angle between open end and matched edge
         double angleBetweenEdges = getAngleDiff(openEnd, queryResult);
         angleBetweenEdges = Math.min(angleBetweenEdges, 180 - angleBetweenEdges);
-        if (openEndConnectionAngle >= 86 && openEndConnectionAngle <= 90 && angleBetweenEdges <= 4) {
+        if ((roadClass == RoadClass.SERVICE_DRIVEWAY || roadClass == RoadClass.SERVICE_PARKING_AISLE)
+                && openEndConnectionAngle >= 86 && openEndConnectionAngle <= 90
+                && angleBetweenEdges <= 4) {
             return 1;
+        }
+        if (roadClass == RoadClass.PATH || roadClass == RoadClass.FOOTWAY || roadClass == RoadClass.STEPS) {
+            // For footways it is adviseable to compare the distance on the graph with the beeline distance. If they
+            // don't differ a lot, it is likely a false positive or less important issue.
+            double distanceOnGraph = doRouting ? getDistanceOnGraph(openEnd.getBaseNode(), queryResult) : 1000;
+            double ratio = distanceOnGraph / queryResult.getQueryDistance();
+            if (ratio < 2) {
+                // Hide it totally from output
+                return 100;
+            }
+            if (ratio < 6) {
+                return 1;
+            }
+            if (openEndConnectionAngle >= 83 && openEndConnectionAngle <= 90
+                    && angleBetweenEdges <= 7
+                    && queryResult.getQueryDistance() > openEnd.fetchWayGeometry(3).calcDistance(distanceCalc)) {
+                return 1;
+            }
         }
         return 0;
     }
@@ -340,16 +368,14 @@ public class UnconnectedFinder implements Runnable {
         if (barriersHook.crossesBarrier(fromPoints.getLon(0), fromPoints.getLat(0), closestResult.getSnappedPoint().lon, closestResult.getSnappedPoint().lat)) {
             return;
         }
-        // ratio between distance over graph and beeline; ratios within the range (1.0,4.0) are
-        // an indicator for false positives.
-        double distanceOnGraph = doRouting ? getDistanceOnGraph(id, fromPoints.toGHPoint(0), closestResult) : 0;
         GHPoint queryPoint = closestResult.getQueryPoint();
         GHPoint snappedPoint = closestResult.getSnappedPoint();
         int priority = getPriority(roadClass, isPrivate, distanceClosest);
         priority += getImportanceDecrement(roadClass, firstEdge, closestResult);
-        results.add(new MissingConnection(queryPoint, snappedPoint, distanceClosest,
-                distanceOnGraph, id, osmId,
-                closestResult.getSnappedPosition(), roadClass, isPrivate, priority));
+        if (priority <= 6) {
+            results.add(new MissingConnection(queryPoint, snappedPoint, distanceClosest, id, osmId,
+                    closestResult.getSnappedPosition(), roadClass, isPrivate, priority));
+        }
     }
 
     private void runAndCatchExceptions() {
