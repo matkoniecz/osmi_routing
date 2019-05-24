@@ -243,13 +243,14 @@ public class UnconnectedFinder implements Runnable {
         }
         openEndConnectionAngle = Math.min(openEndConnectionAngle, 180 - openEndConnectionAngle);
 
-        // Get angle between open end and matched edge
-        double angleBetweenEdges = getAngleDiff(openEnd, queryResult);
-        angleBetweenEdges = Math.min(angleBetweenEdges, 180 - angleBetweenEdges);
-        if ((roadClass == RoadClass.SERVICE_DRIVEWAY || roadClass == RoadClass.SERVICE_PARKING_AISLE)
-                && openEndConnectionAngle >= 86 && openEndConnectionAngle <= 90
-                && angleBetweenEdges <= 4) {
-            return 1;
+        if (roadClass == RoadClass.SERVICE_DRIVEWAY || roadClass == RoadClass.SERVICE_PARKING_AISLE) {
+            // Get angle between open end and matched edge
+            double angleBetweenEdges = getAngleDiff(openEnd, queryResult);
+            angleBetweenEdges = Math.min(angleBetweenEdges, 180 - angleBetweenEdges);
+            if (openEndConnectionAngle >= 86 && openEndConnectionAngle <= 90
+                    && angleBetweenEdges <= 4) {
+                return 1;
+            }
         }
         if (roadClass == RoadClass.PATH || roadClass == RoadClass.FOOTWAY || roadClass == RoadClass.STEPS) {
             // For footways it is adviseable to compare the distance on the graph with the beeline distance. If they
@@ -261,11 +262,6 @@ public class UnconnectedFinder implements Runnable {
                 return 100;
             }
             if (ratio < 6) {
-                return 1;
-            }
-            if (openEndConnectionAngle >= 83 && openEndConnectionAngle <= 90
-                    && angleBetweenEdges <= 7
-                    && queryResult.getQueryDistance() > openEnd.fetchWayGeometry(3).calcDistance(distanceCalc)) {
                 return 1;
             }
         }
