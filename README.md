@@ -27,9 +27,7 @@ This tool depends heavily on GraphHopper and minor other dependencies. In order 
 
 ## Known issues
 
-* at the moment too slow (more than 13 hours for a planet dump)
 * still to many false positives
-* removal of subnetworks needs to be enabled again in order to report them
 * duplicated ways are not reported
 
 
