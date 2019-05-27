@@ -54,7 +54,7 @@ public class OsmiRoutingMain {
         parser.addArgument("-w", "--worker-threads")
                 .type(Integer.class)
                 .setDefault(2)
-                .help("search radius for missing connections");
+                .help("number of worker threads to search missing connections");
         parser.addArgument("input_file").help("input file");
         parser.addArgument("graph_directory").help("directory where to store graph");
         parser.addArgument("output_directory").help("output directory");
