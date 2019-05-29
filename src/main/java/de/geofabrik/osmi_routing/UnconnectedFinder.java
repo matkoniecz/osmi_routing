@@ -194,10 +194,15 @@ public class UnconnectedFinder implements Runnable {
 
     private int getPriority(AllRoadsFlagEncoder.RoadClass roadClass, boolean isPrivate, double distance) {
         int[] thisClassPriorities = priorities.getOrDefault(roadClass, new int[]{0, 0, 0, 0});
-        double categoryWith = maxDistance / 4;
-        int index = (int) (distance / categoryWith);
+        double categoryWidth = maxDistance / 4;
+        int index = (int) (distance / categoryWidth);
         index = Math.min(3, index);
         int priority = thisClassPriorities[index];
+        if (priority > 0 && distance < 1.0) {
+            priority = Math.min(1, priority - 2);
+        } else if (priority > 0 && distance < 2.0) {
+            priority = Math.min(1, priority - 1);
+        }
         if (isPrivate) {
             priority += 1;
         }
@@ -368,7 +373,7 @@ public class UnconnectedFinder implements Runnable {
         GHPoint snappedPoint = closestResult.getSnappedPoint();
         int priority = getPriority(roadClass, isPrivate, distanceClosest);
         priority += getImportanceDecrement(roadClass, firstEdge, closestResult);
-        if (priority <= 6) {
+        if (priority > 0 && priority <= 6) {
             results.add(new MissingConnection(queryPoint, snappedPoint, distanceClosest, id, osmId,
                     closestResult.getSnappedPosition(), roadClass, isPrivate, priority));
         }
