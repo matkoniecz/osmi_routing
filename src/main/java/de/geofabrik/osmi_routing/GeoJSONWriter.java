@@ -36,8 +36,6 @@ import de.geofabrik.osmi_routing.subnetworks.RemoveAndDumpSubnetworks;
 
 public class GeoJSONWriter {
     private BufferedWriter writer;
-//    private DataOutputStream outStream;
-//    private PrintWriter out;
     private DecimalFormatSymbols decimalFormatSymbols;
     private DecimalFormat df1;
     private DecimalFormat df2;
@@ -53,8 +51,40 @@ public class GeoJSONWriter {
         df2 = new DecimalFormat("#.##", decimalFormatSymbols);
         df7 = new DecimalFormat("#.#######", decimalFormatSymbols);
     }
+
+    public void writeDuplicatedEdges(List<DuplicatedEdge> items) throws IOException {
+        for (DuplicatedEdge item : items) {
+            write(item);
+        }
+    }
+
+    public void write(DuplicatedEdge e) throws IOException {
+        StringBuilder out = new StringBuilder(900);
+        if (!firstFeature) {
+            out.append(",\n");
+        }
+        firstFeature = false;
+
+        out.append("{\"type\":\"Feature\",\"properties\":{\"type\": \"duplicated_edge\", \"node_id\":");
+        out.append(e.getOsmNodeId());
+        out.append("}, \"geometry\":{\"type\":\"LineString\",\"coordinates\":[");
+        boolean firstPoint = true;
+        for (GHPoint p : e.getGeometry()) {
+            if (!firstPoint) {
+                out.append(",");
+            }
+            firstPoint = false;
+            out.append('[');
+            out.append(df7.format(p.getLon()));
+            out.append(", ");
+            out.append(df7.format(p.getLat()));
+            out.append(']');
+        }
+        out.append("]}}\n");
+        writer.write(out.toString());
+    }
     
-    public void write(List<MissingConnection> items) throws IOException {
+    public void writeMissingConnections(List<MissingConnection> items) throws IOException {
         for (MissingConnection item : items) {
             write(item);
         }

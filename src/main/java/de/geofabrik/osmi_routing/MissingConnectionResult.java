@@ -27,7 +27,8 @@ import java.util.List;
 
 public class MissingConnectionResult {
     
-    private List<MissingConnection> results;
+    private List<MissingConnection> missingConnections;
+    private List<DuplicatedEdge> duplicatedEdges;
     private boolean complete;
     private boolean success;
     private Exception ex;
@@ -38,8 +39,9 @@ public class MissingConnectionResult {
         ex = new RuntimeException("no success result stored");
     }
 
-    public void storeSuccessResult(List<MissingConnection> foundResults) {
-        results = foundResults;
+    public void storeSuccessResult(List<MissingConnection> foundUnconnected, List<DuplicatedEdge> foundDuplicates) {
+        missingConnections = foundUnconnected;
+        duplicatedEdges = foundDuplicates;
         complete = true;
         success = true;
     }
@@ -62,7 +64,11 @@ public class MissingConnectionResult {
         return ex;
     }
 
-    public List<MissingConnection> getEntities() {
-        return results;
+    public List<MissingConnection> getMissingConnections() {
+        return missingConnections;
+    }
+
+    public List<DuplicatedEdge> getDuplicates() {
+        return duplicatedEdges;
     }
 }

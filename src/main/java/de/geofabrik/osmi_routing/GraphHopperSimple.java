@@ -85,8 +85,7 @@ public class GraphHopperSimple extends GraphHopperOSM {
         double maxDistance = args.getDouble("radius");
         int workers = args.getInt("worker_threads");
         try {
-            java.nio.file.Path outputFileNameConnections = Paths.get(outputDirectory, "unconnected_nodes.json"); 
-            unconnectedFinderManager = new UnconnectedFinderManager(this, encoder, outputFileNameConnections, maxDistance, workers);
+            unconnectedFinderManager = new UnconnectedFinderManager(this, encoder, outputDirectory, maxDistance, workers);
         } catch (IOException e) {
             logger.fatal(e);
             e.printStackTrace();

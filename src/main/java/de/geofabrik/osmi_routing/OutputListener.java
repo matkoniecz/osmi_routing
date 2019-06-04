@@ -10,7 +10,7 @@ public interface OutputListener {
      *
      * @param results The list of results.
      */
-    void complete(List<MissingConnection> results);
+    void complete(List<MissingConnection> results, List<DuplicatedEdge> foundDuplicates);
 
     /**
      * Notifies the listener that an error occurred during processing.

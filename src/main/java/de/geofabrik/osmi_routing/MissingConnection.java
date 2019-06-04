@@ -7,7 +7,7 @@ import de.geofabrik.osmi_routing.flag_encoders.AllRoadsFlagEncoder;
 import de.geofabrik.osmi_routing.flag_encoders.AllRoadsFlagEncoder.RoadClass;
 
 public class MissingConnection {
-    
+
     private GHPoint openEndPoint;
     private GHPoint snapPoint;
     private double distance;

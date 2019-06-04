@@ -52,6 +52,11 @@ This tool produces three output files, one per profile.
 * `vehicle`: vehicle (`car`, `bike_simple` or `allroads`)
 
 
+### Duplicated Edges
+
+If two edges have the same nodes and the same geometry, they will be written to `duplicated_edges.json`.
+
+
 ## Dependencies
 
 This tool depends heavily on GraphHopper and minor other dependencies. In order to store OSM node IDs for all tower nodes in the graph, this tool comes with a patched version of GraphHopper as a submodule.

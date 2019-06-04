@@ -24,6 +24,7 @@ package de.geofabrik.osmi_routing;
 
 import java.io.IOException;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
@@ -57,7 +58,8 @@ public class UnconnectedFinderManager {
         BarriersHook barriersHook;
         boolean doRouting;
         AllRoadsFlagEncoder encoder;
-        GeoJSONWriter writer;
+        GeoJSONWriter missingConnectionsWriter;
+        GeoJSONWriter duplicatedEdgesWriter;
         private double maxDistance;
         AngleCalc angleCalc;
         private final Lock lock;
@@ -68,10 +70,11 @@ public class UnconnectedFinderManager {
         HashMap<RoadClass, int[]> priorities;
         private int increment = 100000;
 
-        public UnconnectedFinderManager(GraphHopperSimple hopper, AllRoadsFlagEncoder encoder, Path outputPath, double maxDistance, int workers) throws IOException {
+        public UnconnectedFinderManager(GraphHopperSimple hopper, AllRoadsFlagEncoder encoder, String outputDirectory, double maxDistance, int workers) throws IOException {
             this.hopper = hopper;
             this.encoder = encoder;
-            this.writer = new GeoJSONWriter(outputPath);
+            this.missingConnectionsWriter = new GeoJSONWriter(Paths.get(outputDirectory, "unconnected_nodes.json"));
+            this.duplicatedEdgesWriter = new GeoJSONWriter(Paths.get(outputDirectory, "duplicated_edges.json"));
             this.maxDistance = maxDistance;
             this.angleCalc = new AngleCalc();
 
@@ -146,8 +149,10 @@ public class UnconnectedFinderManager {
                         throw new RuntimeException("A worker thread failed, aborting.", r.getException());
                     }
                     lock.unlock();
-                    writer.write(r.getEntities());
-                    writer.flush();
+                    missingConnectionsWriter.writeMissingConnections(r.getMissingConnections());
+                    missingConnectionsWriter.flush();
+                    duplicatedEdgesWriter.writeDuplicatedEdges(r.getDuplicates());
+                    duplicatedEdgesWriter.flush();
                 } catch (Exception e) {
                     logger.fatal(e);
                     System.exit(1);
@@ -188,10 +193,10 @@ public class UnconnectedFinderManager {
                     }
     
                     @Override
-                    public void complete(List<MissingConnection> decodedEntities) {
+                    public void complete(List<MissingConnection> decodedEntities, List<DuplicatedEdge> foundDuplicates) {
                         lock.lock();
                         try {
-                            processingResult.storeSuccessResult(decodedEntities);
+                            processingResult.storeSuccessResult(decodedEntities, foundDuplicates);
                             signalUpdate();
     
                         } finally {
@@ -208,7 +213,8 @@ public class UnconnectedFinderManager {
             }
             sendResultsToSink(0);
             try {
-                writer.close();
+                missingConnectionsWriter.close();
+                duplicatedEdgesWriter.close();
             } catch (IOException e) {
                 logger.fatal(e);
                 System.exit(1);

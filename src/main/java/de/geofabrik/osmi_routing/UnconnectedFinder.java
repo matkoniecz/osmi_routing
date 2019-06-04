@@ -68,7 +68,8 @@ public class UnconnectedFinder implements Runnable {
     AngleCalc angleCalc;
     DistanceCalc distanceCalc;
     private final OutputListener listener;
-    private List<MissingConnection> results;
+    private List<MissingConnection> resultsMissingConnections;
+    private List<DuplicatedEdge> resultsDuplicatedEdges;
     private int startId;
     private int count;
     Map<RoadClass, int[]> priorities;
@@ -293,29 +294,46 @@ public class UnconnectedFinder implements Runnable {
         boolean isPrivate = false;
 
         // edge ID of the blind end node we are currently working on
-        int blindEndEdgeId = -1;
-        // number of edges connected with this node
-        int edgesCount = 0;
-        // ID of the adjacent node
-        int adjNode = -1;
+        ArrayList<EdgeIteratorState> edgeIteratorStates = new ArrayList<EdgeIteratorState>(5);
+        // IDs of the adjacent node
+        ArrayList<Integer> adjNodes = new ArrayList<Integer>(5);
 
         // get all edges and neighbour nodes
         while (iter.next()) {
-            blindEndEdgeId = iter.getEdge();
-            adjNode = iter.getAdjNode();
+            edgeIteratorStates.add(iter.detach(false));
+            adjNodes.add(iter.getAdjNode());
             roadClass = encoder.getRoadClass(iter);
             isPrivate = encoder.isPrivateAccess(iter);
-            ++edgesCount;
         }
-        if (edgesCount > 1 || adjNode == -1 || blindEndEdgeId == -1) {
-            // more than one edge leading to this node
+        // check for duplicated edges
+        int adjNode = -1;
+        for (int i = 0; i < adjNodes.size() - 1; ++i) {
+            adjNode = adjNodes.get(i);
+            for (int j = i + 1; j < adjNodes.size(); ++j) {
+                if (adjNodes.get(j) == adjNode) {
+                    // Compare geometry
+                    EdgeIteratorState edge1 = edgeIteratorStates.get(i);
+                    EdgeIteratorState edge2 = edgeIteratorStates.get(j);
+                    if (edge1.getDistance() != edge2.getDistance()) {
+                        continue;
+                    }
+                    PointList points = edge1.fetchWayGeometry(3);
+                    if (points.equals(edge2.fetchWayGeometry(3))) {
+                        resultsDuplicatedEdges.add(new DuplicatedEdge(points, osmId));
+                        break;
+                    }
+                }
+            }
+        }
+        if (adjNodes.size() > 1 || adjNode == -1 || edgeIteratorStates.size() != 1) {
+            // more than one or zero edges leading to this node
             return;
         }
 
         // Retrieve edges connected the only adjacent node because they are often matched by the
         // location index lookup but are usually false positives. We exclude them before we later
         // check their geometric distance on the graph.
-        EdgeIteratorState firstEdge = storage.getEdgeIteratorState(blindEndEdgeId, adjNode);
+        EdgeIteratorState firstEdge = edgeIteratorStates.get(0);
         PointList fromPoints = firstEdge.fetchWayGeometry(1);
         List<Integer> neighboursOfAdjNode = new ArrayList<Integer>();
         EdgeIterator adjIter = explorer.setBaseNode(adjNode);
@@ -337,7 +355,7 @@ public class UnconnectedFinder implements Runnable {
         for (QueryResult r : result) {
             EdgeIteratorState foundEdge = r.getClosestEdge();
             // Check if the matched edge is the only edge connected to our node.
-            if (foundEdge.getEdge() == blindEndEdgeId) {
+            if (foundEdge.getEdge() == edgeIteratorStates.get(0).getEdge()) {
                 continue;
             }
             // Check if the matched node is our adjacent node.
@@ -374,7 +392,7 @@ public class UnconnectedFinder implements Runnable {
         int priority = getPriority(roadClass, isPrivate, distanceClosest);
         priority += getImportanceDecrement(roadClass, firstEdge, closestResult);
         if (priority > 0 && priority <= 6) {
-            results.add(new MissingConnection(queryPoint, snappedPoint, distanceClosest, id, osmId,
+            resultsMissingConnections.add(new MissingConnection(queryPoint, snappedPoint, distanceClosest, id, osmId,
                     closestResult.getSnappedPosition(), roadClass, isPrivate, priority));
         }
     }
@@ -393,10 +411,11 @@ public class UnconnectedFinder implements Runnable {
 
     @Override
     public void run() {
-        results = new ArrayList<MissingConnection>();
+        resultsMissingConnections = new ArrayList<MissingConnection>();
+        resultsDuplicatedEdges = new ArrayList<DuplicatedEdge>();
         try {
             runAndCatchExceptions();
-            listener.complete(results);
+            listener.complete(resultsMissingConnections, resultsDuplicatedEdges);
 
         } catch (RuntimeException e) {
             listener.error(e);
