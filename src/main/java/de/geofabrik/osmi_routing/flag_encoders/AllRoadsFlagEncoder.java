@@ -18,12 +18,9 @@
 
 package de.geofabrik.osmi_routing.flag_encoders;
 
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Set;
 
+import com.carrotsearch.hppc.LongArrayList;
 import com.graphhopper.reader.ReaderRelation;
 import com.graphhopper.reader.ReaderWay;
 import com.graphhopper.routing.profiles.BooleanEncodedValue;
@@ -155,6 +152,7 @@ public class AllRoadsFlagEncoder extends AbstractFlagEncoder {
 
     private EnumEncodedValue<RoadClass> roadClassEncoder;
     private BooleanEncodedValue privateEncoder;
+    private BooleanEncodedValue areaEncoder;
     private LevelEncoder levelEncoder;
 
     public AllRoadsFlagEncoder() {
@@ -179,6 +177,7 @@ public class AllRoadsFlagEncoder extends AbstractFlagEncoder {
         registerNewEncodedValue.add(speedEncoder = new FactorizedDecimalEncodedValue(prefix + "average_speed", speedBits, speedFactor, false));
         registerNewEncodedValue.add(roadClassEncoder = new EnumEncodedValue<RoadClass>("road_class", RoadClass.class));
         registerNewEncodedValue.add(privateEncoder = new SimpleBooleanEncodedValue("private_access"));
+        registerNewEncodedValue.add(areaEncoder = new SimpleBooleanEncodedValue("area"));
         levelEncoder = new LevelEncoder();
         registerNewEncodedValue = levelEncoder.register(registerNewEncodedValue);
     }
@@ -225,6 +224,14 @@ public class AllRoadsFlagEncoder extends AbstractFlagEncoder {
             privateEncoder.setBool(false, edgeFlags, false);
             privateEncoder.setBool(true, edgeFlags, false);
         }
+        LongArrayList nodes = way.getNodes();
+        if (way.hasTag("area", "yes") && nodes.size() > 3 && nodes.get(0) == nodes.get(nodes.size() - 1)) {
+            areaEncoder.setBool(false, edgeFlags, true);
+            areaEncoder.setBool(true, edgeFlags, true);
+        } else {
+            areaEncoder.setBool(false, edgeFlags, false);
+            areaEncoder.setBool(true, edgeFlags, false);
+        }
         accessEnc.setBool(false, edgeFlags, true);
         accessEnc.setBool(true, edgeFlags, true);
         // encode level
@@ -254,6 +261,10 @@ public class AllRoadsFlagEncoder extends AbstractFlagEncoder {
 
     public boolean isPrivateAccess(EdgeIteratorState state) {
         return privateEncoder.getBool(false, state.getFlags());
+    }
+
+    public boolean isArea(EdgeIteratorState state) {
+        return areaEncoder.getBool(false, state.getFlags());
     }
 
     @Override

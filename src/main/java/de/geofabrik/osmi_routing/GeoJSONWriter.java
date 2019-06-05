@@ -69,6 +69,8 @@ public class GeoJSONWriter {
         out.append(e.getOsmId());
         out.append(", \"way_id2\": ");
         out.append(e.getOsmIdOther());
+        out.append(", \"rank\": ");
+        out.append(e.getRank());
         out.append("}, \"geometry\":{\"type\":\"LineString\",\"coordinates\":[");
         boolean firstPoint = true;
         for (GHPoint p : e.getGeometry()) {

@@ -323,7 +323,8 @@ public class UnconnectedFinder implements Runnable {
                     if (points.equals(edge2.fetchWayGeometry(3))) {
                         long wayId1 = wayIdStore.getOsmId(edge1.getEdge());
                         long wayId2 = wayIdStore.getOsmId(edge2.getEdge());
-                        resultsDuplicatedEdges.add(new DuplicatedEdge(points, wayId1, wayId2));
+                        boolean areaInvolved = encoder.isArea(edge1) || encoder.isArea(edge2);
+                        resultsDuplicatedEdges.add(new DuplicatedEdge(points, wayId1, wayId2, areaInvolved));
                         break;
                     }
                 }

@@ -7,11 +7,13 @@ public class DuplicatedEdge {
     private PointList geometry;
     private long osmWayId;
     private long osmWayIdOther;
+    private int rank;
 
-    public DuplicatedEdge(PointList geometry, long osmWayId, long osmWayIdOther) {
+    public DuplicatedEdge(PointList geometry, long osmWayId, long osmWayIdOther, boolean areaInvolved) {
         this.geometry = geometry;
         this.osmWayId = osmWayId;
         this.osmWayIdOther = osmWayIdOther;
+        this.rank = areaInvolved ? 2 : 1;
     }
 
     public PointList getGeometry() {
@@ -24,6 +26,10 @@ public class DuplicatedEdge {
 
     public long getOsmIdOther() {
         return osmWayIdOther;
+    }
+
+    public int getRank() {
+        return rank;
     }
 }
 
