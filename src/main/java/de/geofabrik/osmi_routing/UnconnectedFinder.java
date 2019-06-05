@@ -61,6 +61,7 @@ public class UnconnectedFinder implements Runnable {
     private GraphHopperStorage storage;
     private LocationIndex index;
     ThreadSafeOsmIdNoExitStoreAccessor nodeInfoStore;
+    OsmIdStore.ThreadSafeOsmIdAccessor wayIdStore;
     BarriersHook barriersHook;
     AllRoadsFlagEncoder encoder;
     private double maxDistance;
@@ -77,7 +78,7 @@ public class UnconnectedFinder implements Runnable {
 
     public UnconnectedFinder(GraphHopperSimple hopper, AllRoadsFlagEncoder encoder,
             double maxDistance, GraphHopperStorage graphhopperStorage,
-            ThreadSafeOsmIdNoExitStoreAccessor infoStore, BarriersHook barriersHook,
+            ThreadSafeOsmIdNoExitStoreAccessor infoStore, OsmIdStore.ThreadSafeOsmIdAccessor wayIdStore, BarriersHook barriersHook,
             OutputListener listener, int start, int count, Map<RoadClass, int[]> priorities,
             boolean doRouting) {
         this.encoder = encoder;
@@ -88,6 +89,7 @@ public class UnconnectedFinder implements Runnable {
         this.dijkstra = new DijkstraWithLimits(this.storage, 80, this.maxDistance);
         this.index = (LocationIndexTree) hopper.getLocationIndex();
         this.nodeInfoStore = infoStore;
+        this.wayIdStore = wayIdStore;
         this.barriersHook = barriersHook;
         this.listener = listener;
         this.startId = start;
@@ -319,7 +321,9 @@ public class UnconnectedFinder implements Runnable {
                     }
                     PointList points = edge1.fetchWayGeometry(3);
                     if (points.equals(edge2.fetchWayGeometry(3))) {
-                        resultsDuplicatedEdges.add(new DuplicatedEdge(points, osmId));
+                        long wayId1 = wayIdStore.getOsmId(edge1.getEdge());
+                        long wayId2 = wayIdStore.getOsmId(edge2.getEdge());
+                        resultsDuplicatedEdges.add(new DuplicatedEdge(points, wayId1, wayId2));
                         break;
                     }
                 }

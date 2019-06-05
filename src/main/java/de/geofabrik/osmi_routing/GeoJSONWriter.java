@@ -65,8 +65,10 @@ public class GeoJSONWriter {
         }
         firstFeature = false;
 
-        out.append("{\"type\":\"Feature\",\"properties\":{\"type\": \"duplicated_edge\", \"node_id\":");
-        out.append(e.getOsmNodeId());
+        out.append("{\"type\":\"Feature\",\"properties\":{\"type\": \"duplicated_edge\", \"way_id\":");
+        out.append(e.getOsmId());
+        out.append(", \"way_id2\": ");
+        out.append(e.getOsmIdOther());
         out.append("}, \"geometry\":{\"type\":\"LineString\",\"coordinates\":[");
         boolean firstPoint = true;
         for (GHPoint p : e.getGeometry()) {

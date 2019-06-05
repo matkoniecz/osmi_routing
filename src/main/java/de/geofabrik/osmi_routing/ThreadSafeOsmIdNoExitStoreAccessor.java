@@ -7,8 +7,8 @@ import java.nio.ByteBuffer;
  */
 public class ThreadSafeOsmIdNoExitStoreAccessor {
     
-    private OsmIdAndNoExitStore store;
-    private ByteBuffer buffer;
+    protected OsmIdAndNoExitStore store;
+    protected ByteBuffer buffer;
 
     public ThreadSafeOsmIdNoExitStoreAccessor(OsmIdAndNoExitStore store) {
         this.store = store;

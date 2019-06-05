@@ -146,4 +146,8 @@ public class OsmIdAndNoExitStore {
     public boolean getNoExit(int internalId) {
         return getNoExit(internalId, inputByteBuffer);
     }
+
+    public ThreadSafeOsmIdNoExitStoreAccessor getThreadSafeAccessor() {
+        return new ThreadSafeOsmIdNoExitStoreAccessor(this);
+    }
 }

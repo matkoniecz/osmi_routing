@@ -5,19 +5,25 @@ import com.graphhopper.util.PointList;
 public class DuplicatedEdge {
     
     private PointList geometry;
-    private long osmNodeId;
+    private long osmWayId;
+    private long osmWayIdOther;
 
-    public DuplicatedEdge(PointList geometry, long osmNodeId) {
+    public DuplicatedEdge(PointList geometry, long osmWayId, long osmWayIdOther) {
         this.geometry = geometry;
-        this.osmNodeId = osmNodeId;
+        this.osmWayId = osmWayId;
+        this.osmWayIdOther = osmWayIdOther;
     }
 
     public PointList getGeometry() {
         return geometry;
     }
 
-    public long getOsmNodeId() {
-        return osmNodeId;
+    public long getOsmId() {
+        return osmWayId;
+    }
+
+    public long getOsmIdOther() {
+        return osmWayIdOther;
     }
 }
 

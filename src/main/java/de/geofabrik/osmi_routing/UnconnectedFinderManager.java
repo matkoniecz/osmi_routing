@@ -38,6 +38,7 @@ import java.util.concurrent.locks.ReentrantLock;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
+import com.carrotsearch.hppc.LongHashSet;
 import com.graphhopper.reader.ReaderElement;
 import com.graphhopper.reader.osm.pbf.PbfBlobDecoderListener;
 import com.graphhopper.reader.osm.pbf.PbfBlobResult;
@@ -55,6 +56,7 @@ public class UnconnectedFinderManager {
         private GraphHopperSimple hopper;
         private GraphHopperStorage storage;
         OsmIdAndNoExitStore nodeInfoStore;
+        OsmIdStore wayIdStore;
         BarriersHook barriersHook;
         boolean doRouting;
         AllRoadsFlagEncoder encoder;
@@ -206,7 +208,7 @@ public class UnconnectedFinderManager {
                 };
                 
                 UnconnectedFinder f = new UnconnectedFinder(hopper, encoder, maxDistance, storage,
-                        new ThreadSafeOsmIdNoExitStoreAccessor(nodeInfoStore), barriersHook, listener, startId,
+                        nodeInfoStore.getThreadSafeAccessor(), wayIdStore.getThreadSafeAccessor(), barriersHook, listener, startId,
                         count, priorities, doRouting);
                 executorService.execute(f);
                 sendResultsToSink(threadCount - 1);
@@ -234,10 +236,11 @@ public class UnconnectedFinderManager {
             
         }
 
-        public void init(GraphHopperStorage graphHopperStorage, OsmIdAndNoExitStore infoStore, BarriersHook barriersHook,
+        public void init(GraphHopperStorage graphHopperStorage, OsmIdAndNoExitStore infoStore, OsmIdStore wayIdStore, BarriersHook barriersHook,
                 boolean doRouting) {
             this.storage = graphHopperStorage;
             this.nodeInfoStore = infoStore;
+            this.wayIdStore = wayIdStore;
             this.barriersHook = barriersHook;
             this.doRouting = doRouting;
         }

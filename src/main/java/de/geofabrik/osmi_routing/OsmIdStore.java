@@ -38,4 +38,28 @@ public class OsmIdStore extends OsmIdAndNoExitStore {
         return getOsmId(internalId, inputByteBuffer);
     }
 
+    /**
+     * Provide thread-safe read access to OsmIdAndNoExitStore.
+     */
+    public class ThreadSafeOsmIdAccessor extends ThreadSafeOsmIdNoExitStoreAccessor {
+
+        public ThreadSafeOsmIdAccessor(OsmIdStore store) {
+            super(store);
+        }
+
+        public long getOsmId(int osmId) {
+            buffer.clear();
+            return store.getOsmId(osmId, buffer);
+        }
+
+        public boolean getNoExit(int nodeId) {
+            throw new UnsupportedOperationException();
+        }
+
+    }
+
+    public ThreadSafeOsmIdAccessor getThreadSafeAccessor() {
+        return new ThreadSafeOsmIdAccessor(this);
+    }
+
 }

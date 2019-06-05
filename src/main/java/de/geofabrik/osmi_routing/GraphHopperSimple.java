@@ -136,7 +136,7 @@ public class GraphHopperSimple extends GraphHopperOSM {
         importOrLoad();
         hook.releaseNoExitSet();
         barriersHook.prepareForQuery();
-        unconnectedFinderManager.init(getGraphHopperStorage(), nodeInfoStore, barriersHook, doRouting);
+        unconnectedFinderManager.init(getGraphHopperStorage(), nodeInfoStore, edgeMapping, barriersHook, doRouting);
         unconnectedFinderManager.run();
         close();
     }
