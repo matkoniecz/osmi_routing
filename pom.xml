@@ -73,11 +73,6 @@
       <version>4.12</version>
       <scope>test</scope>
     </dependency>
-    <dependency>
-      <groupId>org.openjdk.jol</groupId>
-      <artifactId>jol-core</artifactId>
-      <version>0.9</version>
-    </dependency>
   </dependencies>
 
 
@@ -88,7 +83,7 @@
               <configuration>
                   <archive>
                       <manifest>
-                          <mainClass>de.geofabrik.osmi_routing.OsmiRoutingMain</mainClass>
+                        <mainClass>de.geofabrik.osmi_routing.OsmiRoutingMain</mainClass>
                       </manifest>
                   </archive>
                   <descriptorRefs>
