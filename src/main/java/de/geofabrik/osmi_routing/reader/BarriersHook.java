@@ -21,7 +21,7 @@ import de.geofabrik.osmi_routing.index.SparseLocationIndex;
 
 public class BarriersHook extends OSMReaderHook {
 
-    static final Logger logger = LogManager.getLogger(OsmiRoutingMain.class.getName());
+    static final Logger logger = LogManager.getLogger(BarriersHook.class.getName());
     
     private SparseLocationIndex locationIndex;
     private GeometryFactory geomFactory;

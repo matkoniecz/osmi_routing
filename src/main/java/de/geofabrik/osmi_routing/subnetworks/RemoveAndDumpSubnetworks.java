@@ -50,7 +50,7 @@ import de.geofabrik.osmi_routing.UnconnectedFinderManager;
 
 public class RemoveAndDumpSubnetworks extends PrepareRoutingSubnetworks {
 
-    static final Logger logger = LogManager.getLogger(UnconnectedFinderManager.class.getName());
+    static final Logger logger = LogManager.getLogger(RemoveAndDumpSubnetworks.class.getName());
 
     List<GeoJSONWriter> writers;
     int currentWriter;

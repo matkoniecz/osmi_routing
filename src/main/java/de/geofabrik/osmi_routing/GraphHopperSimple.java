@@ -50,7 +50,7 @@ import net.sourceforge.argparse4j.inf.Namespace;
 
 public class GraphHopperSimple extends GraphHopperOSM {
 
-    static final Logger logger = LogManager.getLogger(OsmiRoutingMain.class.getName());
+    static final Logger logger = LogManager.getLogger(GraphHopperSimple.class.getName());
 
     OsmIdAndNoExitStore nodeInfoStore;
     NoExitHook hook;

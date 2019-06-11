@@ -56,7 +56,7 @@ import de.geofabrik.osmi_routing.reader.BarriersHook;
 
 public class UnconnectedFinder implements Runnable {
 
-    static final Logger logger = LogManager.getLogger(OsmiRoutingMain.class.getName());
+    static final Logger logger = LogManager.getLogger(UnconnectedFinder.class.getName());
 
     private GraphHopperStorage storage;
     private LocationIndex index;
