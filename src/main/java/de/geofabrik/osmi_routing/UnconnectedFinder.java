@@ -302,8 +302,9 @@ public class UnconnectedFinder implements Runnable {
 
         // get all edges and neighbour nodes
         while (iter.next()) {
-            edgeIteratorStates.add(iter.detach(false));
-            adjNodes.add(iter.getAdjNode());
+            EdgeIteratorState state = iter.detach(false);
+            adjNodes.add(state.getAdjNode());
+            edgeIteratorStates.add(state);
             roadClass = encoder.getRoadClass(iter);
             isPrivate = encoder.isPrivateAccess(iter);
         }
@@ -330,10 +331,12 @@ public class UnconnectedFinder implements Runnable {
                 }
             }
         }
-        if (adjNodes.size() > 1 || adjNode == -1 || edgeIteratorStates.size() != 1) {
+        if (adjNodes.size() > 1 || edgeIteratorStates.size() != 1) {
             // more than one or zero edges leading to this node
             return;
         }
+
+        adjNode = adjNodes.get(0);
 
         // Retrieve edges connected the only adjacent node because they are often matched by the
         // location index lookup but are usually false positives. We exclude them before we later
