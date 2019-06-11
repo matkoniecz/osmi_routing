@@ -49,7 +49,7 @@ public class OsmiRoutingMain {
                 .help("calculate quotient of distance over graph and beeline for all missing connections");
         parser.addArgument("-r", "--radius")
                 .type(Double.class)
-                .setDefault(15)
+                .setDefault(15.0)
                 .help("search radius for missing connections");
         parser.addArgument("-w", "--worker-threads")
                 .type(Integer.class)
