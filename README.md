@@ -54,7 +54,11 @@ This tool produces three output files, one per profile.
 
 ### Duplicated Edges
 
-If two edges have the same nodes and the same geometry, they will be written to `duplicated_edges.json`.
+If two edges have the same nodes and the same geometry, they will be written to `duplicated_edges.json`. This layer has the following fields:
+
+* `way_id`: OSM ID of one of the involved ways
+* `way_id2`: OSM ID of the other involved way
+* `rank`: rank (`1` for clear errors, `2` for errors involving areas)
 
 
 ## Dependencies
