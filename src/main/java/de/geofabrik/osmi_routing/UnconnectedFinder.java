@@ -359,7 +359,7 @@ public class UnconnectedFinder implements Runnable {
         // iterate over results
         boolean endLevelValid = encoder.isLevelValid(firstEdge);
         int endMinLevel = encoder.getLevel(firstEdge);
-        int endMaxLevel = encoder.getLevelDiff(firstEdge);
+        int endMaxLevel = endMinLevel + encoder.getLevelDiff(firstEdge);
         for (QueryResult r : result) {
             EdgeIteratorState foundEdge = r.getClosestEdge();
             // Check if the matched edge is the only edge connected to our node.

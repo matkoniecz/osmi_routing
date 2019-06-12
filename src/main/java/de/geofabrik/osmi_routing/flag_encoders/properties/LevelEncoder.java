@@ -29,7 +29,7 @@ public class LevelEncoder {
     public LevelEncoder() {
         // (1 << levelBits) - 2, not -1 because the uppermost the uppermost value is reserved for "invalid"
         this.maxLevel = (1 << levelBits) - 2 + minLevel;
-        this.invalidValue = this.maxLevel + 1;
+        this.invalidValue = (1 << levelBits) -1;
     }
 
     public void initForTest() {
@@ -66,7 +66,7 @@ public class LevelEncoder {
         // return valid values only
         int enc = Math.min(level, maxLevel);
         enc = Math.max(minLevel, enc);
-        enc = level - minLevel;
+        enc = enc - minLevel;
         return enc;
     }
 

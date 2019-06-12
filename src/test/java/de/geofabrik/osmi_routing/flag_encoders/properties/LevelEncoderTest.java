@@ -41,6 +41,14 @@ public class LevelEncoderTest {
     }
 
     @Test
+    public void testValidAnother() {
+        encoder.setLevel("1", flags);
+        assertTrue(encoder.isLevelValid(flags));
+        assertEquals(1, encoder.getLevel(flags));
+        assertEquals(0, encoder.getLevelDiff(flags));
+    }
+
+    @Test
     public void testValidNegative() {
         encoder.setLevel("-4", flags);
         assertTrue(encoder.isLevelValid(flags));
