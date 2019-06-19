@@ -73,6 +73,8 @@ public class GraphHopperSimple extends GraphHopperOSM {
         setSortGraph(false);
         AllRoadsFlagEncoder encoder = new AllRoadsFlagEncoder();
         CarFlagEncoder carEncoder = new CarFlagEncoder(2, 50, 1);
+        carEncoder.setBlockFords(false);
+        carEncoder.setBlockByDefault(false);
         SimpleBikeFlagEncoder bicycleEncoder = new SimpleBikeFlagEncoder();
         outputDirectory = args.getString("output_directory");
         List<FlagEncoder> encoders = new ArrayList<FlagEncoder>(4);
