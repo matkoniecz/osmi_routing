@@ -201,10 +201,29 @@ public class UnconnectedFinder implements Runnable {
         int index = (int) (distance / categoryWidth);
         index = Math.min(3, index);
         int priority = thisClassPriorities[index];
-        if (priority > 0 && distance < 1.0) {
+        // Some minor road classes should not pop up in our most important category because they
+        // lead to many false positives.
+        boolean unimportant = false;
+        switch (roadClass) {
+            case SERVICE_DRIVEWAY:
+            case SERVICE_PARKING_AISLE:
+            case FOOTWAY:
+            case CYCLEWAY:
+            case PATH:
+            case STEPS:
+            case PLATFORM:
+            case CONSTRUCTION:
+                unimportant = true;
+                break;
+            default:
+                break;
+        }
+        if (priority > 0 && distance < 1.0 && !unimportant) {
             priority = Math.min(1, priority - 2);
-        } else if (priority > 0 && distance < 2.0) {
+        } else if (priority > 0 && distance < 2.0 && !unimportant) {
             priority = Math.min(1, priority - 1);
+        } else if (priority > 0 && distance < 2.0 && unimportant) {
+            priority = Math.min(2, priority - 1);
         }
         if (isPrivate) {
             priority += 1;
