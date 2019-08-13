@@ -219,11 +219,11 @@ public class UnconnectedFinder implements Runnable {
                 break;
         }
         if (priority > 0 && distance < 1.0 && !unimportant) {
-            priority = Math.min(1, priority - 2);
+            priority = 1;
         } else if (priority > 0 && distance < 2.0 && !unimportant) {
-            priority = Math.min(1, priority - 1);
+            priority = 2;
         } else if (priority > 0 && distance < 2.0 && unimportant) {
-            priority = Math.min(2, priority - 1);
+            priority = Math.max(2, priority - 1);
         }
         if (isPrivate) {
             priority += 1;
