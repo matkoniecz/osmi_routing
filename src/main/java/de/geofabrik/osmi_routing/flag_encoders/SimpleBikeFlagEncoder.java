@@ -205,10 +205,12 @@ public class SimpleBikeFlagEncoder extends AbstractFlagEncoder {
 
         speedDefault = highwaySpeeds.get("cycleway");
         setAvoidSpeedLimit(71);
+
+        init();
     }
 
     public SimpleBikeFlagEncoder() {
-        super(2, 8, 0);
+        this(2, 8, 0);
         addPushingSection("path");
         addPushingSection("footway");
         addPushingSection("pedestrian");
@@ -277,8 +279,9 @@ public class SimpleBikeFlagEncoder extends AbstractFlagEncoder {
                 accept = EncodingManager.Access.WAY;
 
             if (!accept.canSkip()) {
-                if (way.hasTag(restrictions, restrictedValues) && !getConditionalTagInspector().isRestrictedWayConditionallyPermitted(way))
+                if (way.hasTag(restrictions, restrictedValues) && !getConditionalTagInspector().isRestrictedWayConditionallyPermitted(way)) {
                     return EncodingManager.Access.CAN_SKIP;
+		}
                 return accept;
             }
 
