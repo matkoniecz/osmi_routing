@@ -129,7 +129,7 @@ public class SimpleBikeFlagEncoder extends AbstractFlagEncoder {
         roadValues.add("tertiary");
         roadValues.add("tertiary_link");
 
-        maxPossibleSpeed = 30;
+        maxPossibleSpeed = 24;
 
         setTrackTypeSpeed("grade1", 18); // paved
         setTrackTypeSpeed("grade2", 12); // now unpaved ...
