@@ -372,7 +372,7 @@ public class UnconnectedFinder implements Runnable {
         }
         // fetch edge geometry
         List<QueryResult> result = ((LocationIndexTree) index).findNClosest(fromPoints.getLat(0), fromPoints.getLon(0), EdgeFilter.ALL_EDGES, maxDistance);
-        // distance to closest accpeted match
+        // distance to closest accepted match
         double distanceClosest = Double.MAX_VALUE;
         QueryResult closestResult = null;
         // iterate over results
@@ -393,16 +393,21 @@ public class UnconnectedFinder implements Runnable {
             if (neighboursOfAdjNode.contains(r.getClosestNode())) {
                 continue;
             }
-            // Check if matched edge is on same level
+            // Check if matched edge is on same level and the snapped position is not a tower node with 1 edge only
             if (endLevelValid && encoder.isLevelValid(r.getClosestEdge())) {
                 int foundMinLevel = encoder.getLevel(r.getClosestEdge());
                 int foundMaxLevel = foundMinLevel + encoder.getLevelDiff(r.getClosestEdge());
-                if (foundMinLevel > endMaxLevel || foundMaxLevel < endMinLevel) {
+                // Skip if snapped edge is on different layer and the snapped point is not a tower point.
+                // The last condition ensures that unconnected ways with different layers are reported if the open
+                // ends snaps onto a tower node. This is a likely case if two roads are unconnected but one is a bridge
+                // or tunnel.
+                if ((foundMinLevel > endMaxLevel || foundMaxLevel < endMinLevel)
+                        && r.getSnappedPosition() != Position.TOWER){
                     continue;
                 }
             }
             double distance = r.getQueryDistance();
-            if (distance > 0 && distance < distanceClosest) {
+            if (distance < distanceClosest) {
                 distanceClosest = distance;
                 closestResult = r;
             }
