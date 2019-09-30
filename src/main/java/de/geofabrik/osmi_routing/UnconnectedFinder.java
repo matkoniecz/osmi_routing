@@ -196,6 +196,10 @@ public class UnconnectedFinder implements Runnable {
     }
 
     private int getPriority(AllRoadsFlagEncoder.RoadClass roadClass, boolean isPrivate, double distance) {
+        if (distance == 0) {
+            // Two nodes at the same location is always an error of highest priority.
+            return 1;
+        }
         int[] thisClassPriorities = priorities.getOrDefault(roadClass, new int[]{0, 0, 0, 0});
         double categoryWidth = maxDistance / 4;
         int index = (int) (distance / categoryWidth);
