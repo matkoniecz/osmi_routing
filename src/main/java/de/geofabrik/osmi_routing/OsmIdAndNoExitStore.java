@@ -18,6 +18,7 @@
 
 package de.geofabrik.osmi_routing;
 
+import java.nio.Buffer;
 import java.nio.ByteBuffer;
 
 import com.graphhopper.storage.DAType;
@@ -77,7 +78,10 @@ public class OsmIdAndNoExitStore {
     }
     
     protected void setLong(int nodeId, long value) {
-        inputByteBuffer.clear();
+        // Casting to java.nio.Buffer is necessary because ByteBuffer.clear and .flip are have covariant return types
+        // compared to their parent class since Java 9. This is incompatible to Java 8.
+        // https://jira.mongodb.org/browse/JAVA-2559
+        ((Buffer) inputByteBuffer).clear();
         inputByteBuffer.putLong(value);
         nodesInfo.setBytes((long) nodeId  * entryBytes, inputByteBuffer.array(), BUFFER_SIZE);
     }
@@ -85,9 +89,12 @@ public class OsmIdAndNoExitStore {
     protected long getLong(int nodeId, ByteBuffer buffer) {
         byte[] bytes = new byte[BUFFER_SIZE];
         nodesInfo.getBytes((long) nodeId  * entryBytes, bytes, BUFFER_SIZE);
-        buffer.clear();
+        // Casting to java.nio.Buffer is necessary because ByteBuffer.clear and .flip are have covariant return types
+        // compared to their parent class since Java 9. This is incompatible to Java 8.
+        // https://jira.mongodb.org/browse/JAVA-2559
+        ((Buffer) buffer).clear();
         buffer.put(bytes);
-        buffer.flip();
+        ((Buffer) buffer).flip();
         long result = buffer.getLong();
         return result;
     }

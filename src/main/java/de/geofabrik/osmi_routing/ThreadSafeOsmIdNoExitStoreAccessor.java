@@ -1,5 +1,6 @@
 package de.geofabrik.osmi_routing;
 
+import java.nio.Buffer;
 import java.nio.ByteBuffer;
 
 /**
@@ -16,12 +17,15 @@ public class ThreadSafeOsmIdNoExitStoreAccessor {
     }
     
     public long getOsmId(int nodeId) {
-        buffer.clear();
+        // Casting to java.nio.Buffer is necessary because ByteBuffer.clear and .flip are have covariant return types
+        // compared to their parent class since Java 9. This is incompatible to Java 8.
+        // https://jira.mongodb.org/browse/JAVA-2559
+        ((Buffer) buffer).clear();
         return store.getOsmId(nodeId, buffer);
     }
 
     public boolean getNoExit(int nodeId) {
-        buffer.clear();
+        ((Buffer) buffer).clear();
         return store.getNoExit(nodeId, buffer);
     }
 
