@@ -32,6 +32,7 @@ import com.graphhopper.util.Translation;
 
 import java.util.*;
 
+import static com.graphhopper.routing.util.EncodingManager.getKey;
 import static com.graphhopper.routing.util.PriorityCode.*;
 
 /**
@@ -50,7 +51,7 @@ public class SimpleBikeFlagEncoder extends AbstractFlagEncoder {
      */
     public static final int K_UNPAVED = 100;
     protected static final int PUSHING_SECTION_SPEED = 4;
-    // Pushing section heighways are parts where you need to get off your bike and push it (German: Schiebestrecke)
+    // Pushing section highways are parts where you need to get off your bike and push it (German: Schiebestrecke)
     protected final HashSet<String> pushingSectionsHighways = new HashSet<String>();
     protected final HashSet<String> oppositeLanes = new HashSet<String>();
     protected final Set<String> preferHighwayTags = new HashSet<String>();
@@ -215,6 +216,7 @@ public class SimpleBikeFlagEncoder extends AbstractFlagEncoder {
         addPushingSection("footway");
         addPushingSection("pedestrian");
         addPushingSection("steps");
+        addPushingSection("platform");
 
         avoidHighwayTags.add("trunk");
         avoidHighwayTags.add("trunk_link");
@@ -248,8 +250,8 @@ public class SimpleBikeFlagEncoder extends AbstractFlagEncoder {
     public void createEncodedValues(List<EncodedValue> registerNewEncodedValue, String prefix, int index) {
         // first two bits are reserved for route handling in superclass
         super.createEncodedValues(registerNewEncodedValue, prefix, index);
-        registerNewEncodedValue.add(speedEncoder = new FactorizedDecimalEncodedValue(prefix + "average_speed", speedBits, speedFactor, false));
-        registerNewEncodedValue.add(priorityWayEncoder = new FactorizedDecimalEncodedValue(prefix + "priority", 3, PriorityCode.getFactor(1), false));
+        registerNewEncodedValue.add(speedEncoder = new UnsignedDecimalEncodedValue(getKey(prefix, "average_speed"), speedBits, speedFactor, speedTwoDirections));
+        registerNewEncodedValue.add(priorityWayEncoder = new UnsignedDecimalEncodedValue(getKey(prefix, "priority"), 3, PriorityCode.getFactor(1), false));
     }
 
     @Override

@@ -112,8 +112,8 @@ public class DijkstraWithLimits {
         // find neighbour pillars first
         PointList geometry = destinationEdge.fetchWayGeometry(3);
         int neighbour1Index = lowerNeighbourPillars(geometry, destinationLocation);
-        GHPoint neighbour1 = geometry.toGHPoint(neighbour1Index);
-        GHPoint neighbour2 = geometry.toGHPoint(neighbour1Index + 1);
+        GHPoint neighbour1 = geometry.get(neighbour1Index);
+        GHPoint neighbour2 = geometry.get(neighbour1Index + 1);
         // get distance to these neighbours
         double distanceTo1 = distCalc.calcDist(neighbour1.lat, neighbour1.lon, destinationLocation.lat, destinationLocation.lon);
         double distanceTo2 = distCalc.calcDist(neighbour2.lat, neighbour2.lon, destinationLocation.lat, destinationLocation.lon);

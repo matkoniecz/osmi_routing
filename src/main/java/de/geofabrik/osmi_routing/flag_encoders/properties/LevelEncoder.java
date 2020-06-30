@@ -4,7 +4,7 @@ import java.util.List;
 
 import com.graphhopper.routing.profiles.EncodedValue;
 import com.graphhopper.routing.profiles.IntEncodedValue;
-import com.graphhopper.routing.profiles.SimpleIntEncodedValue;
+import com.graphhopper.routing.profiles.UnsignedIntEncodedValue;
 import com.graphhopper.storage.IntsRef;
 import com.graphhopper.util.EdgeIteratorState;
 
@@ -33,15 +33,15 @@ public class LevelEncoder {
     }
 
     public void initForTest() {
-        minLevelEncoder = new SimpleIntEncodedValue("min_level", levelBits, true);
+        minLevelEncoder = new UnsignedIntEncodedValue("min_level", levelBits, true);
         minLevelEncoder.init(new EncodedValue.InitializerConfig());
-        levelDiffEncoder = new SimpleIntEncodedValue("level_diff", 1, true);
+        levelDiffEncoder = new UnsignedIntEncodedValue("level_diff", 1, true);
         levelDiffEncoder.init(new EncodedValue.InitializerConfig());
     }
 
     public List<EncodedValue> register(List<EncodedValue> encodedValues) {
-        encodedValues.add(minLevelEncoder = new SimpleIntEncodedValue("min_level", levelBits, true));
-        encodedValues.add(levelDiffEncoder = new SimpleIntEncodedValue("level_diff", 1, true));
+        encodedValues.add(minLevelEncoder = new UnsignedIntEncodedValue("min_level", levelBits, true));
+        encodedValues.add(levelDiffEncoder = new UnsignedIntEncodedValue("level_diff", 1, true));
         return encodedValues;
     }
 

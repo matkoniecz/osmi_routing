@@ -26,8 +26,8 @@ import com.graphhopper.reader.ReaderWay;
 import com.graphhopper.routing.profiles.BooleanEncodedValue;
 import com.graphhopper.routing.profiles.EncodedValue;
 import com.graphhopper.routing.profiles.EnumEncodedValue;
-import com.graphhopper.routing.profiles.FactorizedDecimalEncodedValue;
 import com.graphhopper.routing.profiles.SimpleBooleanEncodedValue;
+import com.graphhopper.routing.profiles.UnsignedDecimalEncodedValue;
 import com.graphhopper.routing.util.AbstractFlagEncoder;
 import com.graphhopper.routing.util.EncodingManager;
 import com.graphhopper.routing.util.EncodingManager.Access;
@@ -174,7 +174,7 @@ public class AllRoadsFlagEncoder extends AbstractFlagEncoder {
     public void createEncodedValues(List<EncodedValue> registerNewEncodedValue, String prefix, int index) {
         // first two bits are reserved for route handling in superclass
         super.createEncodedValues(registerNewEncodedValue, prefix, index);
-        registerNewEncodedValue.add(speedEncoder = new FactorizedDecimalEncodedValue(prefix + "average_speed", speedBits, speedFactor, false));
+        registerNewEncodedValue.add(speedEncoder = new UnsignedDecimalEncodedValue(prefix + "average_speed", speedBits, speedFactor, false));
         registerNewEncodedValue.add(roadClassEncoder = new EnumEncodedValue<RoadClass>("road_class", RoadClass.class));
         registerNewEncodedValue.add(privateEncoder = new SimpleBooleanEncodedValue("private_access"));
         registerNewEncodedValue.add(areaEncoder = new SimpleBooleanEncodedValue("area"));

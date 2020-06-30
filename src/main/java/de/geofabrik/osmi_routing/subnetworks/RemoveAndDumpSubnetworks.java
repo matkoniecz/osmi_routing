@@ -82,7 +82,7 @@ public class RemoveAndDumpSubnetworks extends PrepareRoutingSubnetworks {
         for (currentWriter = 0; currentWriter < getEncoders().size(); ++currentWriter) {
             FlagEncoder encoder = getEncoders().get(currentWriter);
             // mark edges for one vehicle as inaccessible
-            PrepEdgeFilterWithEncoder filter = new PrepEdgeFilterWithEncoder(encoder);
+            DefaultEdgeFilter filter = DefaultEdgeFilter.allEdges(encoder);
             if (getMinOneWayNetworkSize() > 0)
                 unvisitedDeadEnds += removeDeadEndUnvisitedNetworks(filter);
 
@@ -107,7 +107,7 @@ public class RemoveAndDumpSubnetworks extends PrepareRoutingSubnetworks {
     /**
      * Deletes all but the largest subnetworks.
      */
-    protected int keepLargeNetworks(PrepEdgeFilterWithEncoder filter, List<IntArrayList> components) {
+    protected int keepLargeNetworks(DefaultEdgeFilter filter, List<IntArrayList> components) {
         if (components.size() <= 1)
             return 0;
 
@@ -126,12 +126,12 @@ public class RemoveAndDumpSubnetworks extends PrepareRoutingSubnetworks {
             int removedEdges;
             if (maxCount < component.size()) {
                 // new biggest area found. remove old
-                removedEdges = removeEdges(explorer, accessEnc, oldComponent, getMinNetworkSize(), filter.getEncoder(), SubnetworkType.ISLAND);
+                removedEdges = removeEdges(explorer, accessEnc, oldComponent, getMinNetworkSize(), SubnetworkType.ISLAND);
 
                 maxCount = component.size();
                 oldComponent = component;
             } else {
-                removedEdges = removeEdges(explorer, accessEnc, component, getMinNetworkSize(), filter.getEncoder(), SubnetworkType.ISLAND);
+                removedEdges = removeEdges(explorer, accessEnc, component, getMinNetworkSize(), SubnetworkType.ISLAND);
             }
 
             allRemoved += removedEdges;
@@ -142,43 +142,8 @@ public class RemoveAndDumpSubnetworks extends PrepareRoutingSubnetworks {
         return allRemoved;
     }
 
-    /**
-     * This method removes networks that will be never be visited by this filter. See #235 for
-     * example, small areas like parking lots are sometimes connected to the whole network through a
-     * one-way road. This is clearly an error - but it causes the routing to fail when a point gets
-     * connected to this small area. This routine removes all these networks from the graph.
-     *
-     * @return number of removed edges
-     */
-    int removeDeadEndUnvisitedNetworks(final PrepEdgeFilterWithEncoder bothFilter) {
-        StopWatch sw = new StopWatch(bothFilter.getAccessEnc() + " findComponents").start();
-        final EdgeFilter outFilter = DefaultEdgeFilter.outEdges(bothFilter.getAccessEnc());
-
-        // partition graph into strongly connected components using Tarjan's algorithm
-        TarjansSCCAlgorithm tarjan = new TarjansSCCAlgorithm(getGraphHopperStorage(), outFilter, true);
-        List<IntArrayList> components = tarjan.findComponents();
-        logger.info(sw.stop() + ", size:" + components.size());
-
-        return removeEdges(bothFilter, components, getMinOneWayNetworkSize());
-    }
-
-    /**
-     * This method removes the access to edges available from the nodes contained in the components.
-     * But only if a components' size is smaller then the specified min value.
-     *
-     * @return number of removed edges
-     */
-    protected int removeEdges(final PrepEdgeFilterWithEncoder bothFilter, List<IntArrayList> components, int min) {
-        // remove edges determined from nodes but only if less than minimum size
-        EdgeExplorer explorer = getGraphHopperStorage().createEdgeExplorer(bothFilter);
-        int removedEdges = 0;
-        for (IntArrayList component : components) {
-            removedEdges += removeEdges(explorer, bothFilter.getAccessEnc(), component, min, bothFilter.getEncoder(), SubnetworkType.SINK_SOURCE);
-        }
-        return removedEdges;
-    }
-
-    int removeEdges(EdgeExplorer explorer, BooleanEncodedValue accessEnc, IntIndexedContainer component, int min, FlagEncoder encoder, SubnetworkType type) {
+    int removeEdges(EdgeExplorer explorer, BooleanEncodedValue accessEnc,
+            IntIndexedContainer component, int min, SubnetworkType type) {
         int removedEdges = 0;
         if (component.size() < min) {
             for (int i = 0; i < component.size(); i++) {
@@ -186,7 +151,8 @@ public class RemoveAndDumpSubnetworks extends PrepareRoutingSubnetworks {
                 while (edge.next()) {
                     edge.set(accessEnc, false).setReverse(accessEnc, false);
                     try {
-                        writers.get(currentWriter).writeEdge(edge.fetchWayGeometry(3), type, edgeIdToWayId.getOsmId(edge.getEdge()), encoder);
+                        writers.get(currentWriter).writeEdge(edge.fetchWayGeometry(3), type,
+                                edgeIdToWayId.getOsmId(edge.getEdge()), getEncoders().get(currentWriter));
                     } catch (IOException e) {
                         logger.catching(e);
                         System.exit(1);
@@ -197,24 +163,6 @@ public class RemoveAndDumpSubnetworks extends PrepareRoutingSubnetworks {
         }
 
         return removedEdges;
-    }
-
-    protected static class PrepEdgeFilterWithEncoder extends PrepEdgeFilter {
-
-        FlagEncoder encoder;
-
-        public PrepEdgeFilterWithEncoder(FlagEncoder encoder) {
-            super(encoder);
-            this.encoder = encoder;
-        }
-
-        public FlagEncoder getEncoder() {
-            return encoder;
-        }
-
-        public BooleanEncodedValue getAccessEnc() {
-            return accessEnc;
-        }
     }
     
     public enum SubnetworkType {
