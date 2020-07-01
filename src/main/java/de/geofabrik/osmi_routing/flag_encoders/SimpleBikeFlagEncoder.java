@@ -17,8 +17,11 @@
  */
 package de.geofabrik.osmi_routing.flag_encoders;
 
+import com.graphhopper.reader.ConditionalTagInspector;
 import com.graphhopper.reader.ReaderRelation;
 import com.graphhopper.reader.ReaderWay;
+import com.graphhopper.reader.osm.conditional.ConditionalOSMTagInspector;
+import com.graphhopper.reader.osm.conditional.DateRangeParser;
 import com.graphhopper.routing.profiles.*;
 import com.graphhopper.routing.util.AbstractFlagEncoder;
 import com.graphhopper.routing.util.EncodedValueOld;
@@ -72,10 +75,14 @@ public class SimpleBikeFlagEncoder extends AbstractFlagEncoder {
     // This is the specific bicycle class
     private String classBicycleKey;
 
+    protected final List<String> footRestrictions = new ArrayList<String>(2);
+    private ConditionalTagInspector footConditionalTagInspector;
+
     protected SimpleBikeFlagEncoder(int speedBits, double speedFactor, int maxTurnCosts) {
         super(speedBits, speedFactor, maxTurnCosts);
         // strict set, usually vehicle and agricultural/forestry are ignored by cyclists
         restrictions.addAll(Arrays.asList("bicycle", "vehicle", "access"));
+        footRestrictions.addAll(Arrays.asList("foot", "access"));
         restrictedValues.add("private");
         restrictedValues.add("no");
         restrictedValues.add("restricted");
@@ -172,6 +179,7 @@ public class SimpleBikeFlagEncoder extends AbstractFlagEncoder {
         setHighwaySpeed("cycleway", CYCLEWAY_SPEED);
         setHighwaySpeed("path", 10);
         setHighwaySpeed("footway", 6);
+        setHighwaySpeed("platform", 6);
         setHighwaySpeed("pedestrian", 6);
         setHighwaySpeed("track", 12);
         setHighwaySpeed("service", 14);
@@ -208,6 +216,7 @@ public class SimpleBikeFlagEncoder extends AbstractFlagEncoder {
         setAvoidSpeedLimit(71);
 
         init();
+        footConditionalTagInspector = new ConditionalOSMTagInspector(DateRangeParser.createCalendar(), footRestrictions, restrictedValues, intendedValues);
     }
 
     public SimpleBikeFlagEncoder() {
@@ -320,13 +329,38 @@ public class SimpleBikeFlagEncoder extends AbstractFlagEncoder {
             return EncodingManager.Access.CAN_SKIP;
 
         // check access restrictions
-        if (way.hasTag(restrictions, restrictedValues) && !getConditionalTagInspector().isRestrictedWayConditionallyPermitted(way))
+        if (way.hasTag(restrictions, restrictedValues) && !getConditionalTagInspector().isRestrictedWayConditionallyPermitted(way)) {
+            // Modification compared to upstream: accept ways where foot is permitted but bike is not.
+            // Where walking is permitted, pushing a bike is usually permitted as well.
+            if (isWalkingPermitted(way)) {
+                return EncodingManager.Access.WAY;
+            }
             return EncodingManager.Access.CAN_SKIP;
+        }
 
-        if (getConditionalTagInspector().isPermittedWayConditionallyRestricted(way))
+        if (getConditionalTagInspector().isPermittedWayConditionallyRestricted(way)
+                && !way.hasTag("foot", intendedValues)
+                && !footConditionalTagInspector.isRestrictedWayConditionallyPermitted(way))
             return EncodingManager.Access.CAN_SKIP;
         else
             return EncodingManager.Access.WAY;
+    }
+
+    boolean isWalkingPermitted(ReaderWay way) {
+        if (way.hasTag("highway", "cycleway")) {
+            if(way.hasTag(footRestrictions, intendedValues)
+                    || footConditionalTagInspector.isRestrictedWayConditionallyPermitted(way)) {
+                return true;
+            }
+            return false;
+        }
+        if (way.hasTag(footRestrictions, restrictedValues)) {
+            if (footConditionalTagInspector.isRestrictedWayConditionallyPermitted(way)) {
+                return true;
+            }
+            return false;
+        }
+        return true;
     }
 
     boolean isSacScaleAllowed(String sacScale) {

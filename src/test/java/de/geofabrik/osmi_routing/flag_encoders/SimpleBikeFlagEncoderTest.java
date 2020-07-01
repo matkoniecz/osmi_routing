@@ -50,6 +50,26 @@ public class SimpleBikeFlagEncoderTest {
         way.clearTags();
         way.setTag("railway", "platform");
         assertTrue(encoder.getAccess(way).isWay());
+
+        way.clearTags();
+        way.setTag("highway", "footway");
+        assertTrue(encoder.getAccess(way).isWay());
+        way.setTag("bicycle", "no");
+        assertTrue(encoder.getAccess(way).isWay());
+        way.setTag("access", "no");
+        assertTrue(encoder.getAccess(way).canSkip());
+
+        way.clearTags();
+        way.setTag("highway", "pedestrian");
+        way.setTag("bicycle", "no");
+        assertTrue(encoder.getAccess(way).isWay());
+
+        way.clearTags();
+        way.setTag("highway", "secondary");
+        way.setTag("bicycle", "no");
+        assertTrue(encoder.getAccess(way).isWay());
+        way.setTag("foot", "no");
+        assertTrue(encoder.getAccess(way).canSkip());
     }
 
 }
