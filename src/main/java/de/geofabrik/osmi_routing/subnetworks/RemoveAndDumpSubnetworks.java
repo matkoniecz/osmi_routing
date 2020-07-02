@@ -30,17 +30,13 @@ import java.util.List;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
-import com.carrotsearch.hppc.IntArrayList;
-import com.carrotsearch.hppc.IntIndexedContainer;
-import com.graphhopper.routing.profiles.BooleanEncodedValue;
+import com.graphhopper.routing.ev.BooleanEncodedValue;
 import com.graphhopper.routing.subnetwork.PrepareRoutingSubnetworks;
-import com.graphhopper.routing.subnetwork.TarjansSCCAlgorithm;
-import com.graphhopper.routing.util.DefaultEdgeFilter;
-import com.graphhopper.routing.util.EdgeFilter;
 import com.graphhopper.routing.util.FlagEncoder;
 import com.graphhopper.storage.GraphHopperStorage;
 import com.graphhopper.util.EdgeExplorer;
 import com.graphhopper.util.EdgeIterator;
+import com.graphhopper.util.FetchMode;
 import com.graphhopper.util.Helper;
 import com.graphhopper.util.StopWatch;
 
@@ -56,15 +52,23 @@ public class RemoveAndDumpSubnetworks extends PrepareRoutingSubnetworks {
     int currentWriter;
     OsmIdStore edgeIdToWayId;
 
-    public RemoveAndDumpSubnetworks(GraphHopperStorage ghStorage, List<FlagEncoder> encoders, java.nio.file.Path path, OsmIdStore edgeIdToWayId) throws IOException {
-        super(ghStorage, encoders, false);
-        this.writers = new ArrayList<GeoJSONWriter>(encoders.size());
-        for (FlagEncoder e : encoders) {
-            java.nio.file.Path destination = path.resolve("subnetworks_" + e.toString() + ".json");
+    public RemoveAndDumpSubnetworks(GraphHopperStorage ghStorage, List<PrepareJob> jobs, java.nio.file.Path path, OsmIdStore edgeIdToWayId) throws IOException {
+        super(ghStorage, jobs, false);
+        this.writers = new ArrayList<GeoJSONWriter>(jobs.size());
+        for (PrepareJob j : jobs) {
+            java.nio.file.Path destination = path.resolve("subnetworks_" + j.getName() + ".json");
             this.writers.add(new GeoJSONWriter(destination));
         }
         this.currentWriter = 0;
         this.edgeIdToWayId = edgeIdToWayId;
+    }
+
+    public static RemoveAndDumpSubnetworks build(GraphHopperStorage ghStorage, List<FlagEncoder> encoders, java.nio.file.Path path, OsmIdStore edgeIdToWayId) throws IOException {
+        List<PrepareJob> jobs = new ArrayList<PrepareJob>();
+        for (FlagEncoder encoder : encoders) {
+            jobs.add(new PrepareJob(encoder.toString(), encoder.getAccessEnc(), null));
+        }
+        return new RemoveAndDumpSubnetworks(ghStorage, jobs, path, edgeIdToWayId);
     }
 
     public void close() throws IOException {
@@ -74,97 +78,50 @@ public class RemoveAndDumpSubnetworks extends PrepareRoutingSubnetworks {
     }
 
     public void doWork() {
-        if (getMinNetworkSize() <= 0 && getMinOneWayNetworkSize() <= 0)
+        if (getMinNetworkSize() <= 0) {
+            logger.info("Skipping subnetwork removal and island detection: prepare.min_network_size: " + getMinNetworkSize());
             return;
-
-        logger.info("start finding subnetworks (min:" + getMinNetworkSize() + ", min one way:" + getMinOneWayNetworkSize() + ") " + Helper.getMemInfo());
-        int unvisitedDeadEnds = 0;
-        for (currentWriter = 0; currentWriter < getEncoders().size(); ++currentWriter) {
-            FlagEncoder encoder = getEncoders().get(currentWriter);
-            // mark edges for one vehicle as inaccessible
-            DefaultEdgeFilter filter = DefaultEdgeFilter.allEdges(encoder);
-            if (getMinOneWayNetworkSize() > 0)
-                unvisitedDeadEnds += removeDeadEndUnvisitedNetworks(filter);
-
-            List<IntArrayList> components = findSubnetworks(filter);
-            keepLargeNetworks(filter, components);
-            subnetworks = Math.max(components.size(), subnetworks);
-            logger.info(components.size() + " subnetworks found for " + encoder + ", " + Helper.getMemInfo());
         }
 
+        StopWatch sw = new StopWatch().start();
+        logger.info("start finding subnetworks (min:" + getMinNetworkSize() + ") " + Helper.getMemInfo());
+        logger.info("Subnetwork removal jobs: " + getPrepareJobs());
+        logger.info("Graph nodes: " + Helper.nf(getGraphHopperStorage().getNodes()));
+        logger.info("Graph edges: " + Helper.nf(getGraphHopperStorage().getEdges()));
+        for (currentWriter = 0; currentWriter < getPrepareJobs().size(); ++currentWriter) {
+            PrepareJob job = getPrepareJobs().get(currentWriter);
+            logger.info("--- vehicle: '" + job.getName() + "'");
+            removeSmallSubNetworks(job.getAccessEnc(), job.getTurnCostProvider());
+        }
         markNodesRemovedIfUnreachable();
 
-        if (optimize) {
-            logger.info("optimize to remove subnetworks (" + subnetworks + "), "
-                    + "unvisited-dead-end-nodes (" + unvisitedDeadEnds + "), "
-                    + "maxEdges/node (" + maxEdgesPerNode.get() + ")");
-            getGraphHopperStorage().optimize();
+        if (shouldOptimize) {
+            optimize();
+            logger.info("Finished finding and removing subnetworks for " + getPrepareJobs().size() + " vehicles, took: " + sw.stop().getSeconds() + "s, " + Helper.getMemInfo());
         } else {
-            logger.info("skipping optimization: subnetworks ({}), unvisited-dead-end-nodes ({}), maxEdges/node ({})", subnetworks, unvisitedDeadEnds, maxEdgesPerNode.get());
+            logger.info("Skipping optimization of subnetworks");
         }
     }
 
-    /**
-     * Deletes all but the largest subnetworks.
-     */
-    protected int keepLargeNetworks(DefaultEdgeFilter filter, List<IntArrayList> components) {
-        if (components.size() <= 1)
-            return 0;
-
-        int maxCount = -1;
-        IntIndexedContainer oldComponent = null;
-        int allRemoved = 0;
-        BooleanEncodedValue accessEnc = filter.getAccessEnc();
-        EdgeExplorer explorer = getGraphHopperStorage().createEdgeExplorer(filter);
-        for (IntArrayList component : components) {
-            if (maxCount < 0) {
-                maxCount = component.size();
-                oldComponent = component;
-                continue;
-            }
-
-            int removedEdges;
-            if (maxCount < component.size()) {
-                // new biggest area found. remove old
-                removedEdges = removeEdges(explorer, accessEnc, oldComponent, getMinNetworkSize(), SubnetworkType.ISLAND);
-
-                maxCount = component.size();
-                oldComponent = component;
-            } else {
-                removedEdges = removeEdges(explorer, accessEnc, component, getMinNetworkSize(), SubnetworkType.ISLAND);
-            }
-
-            allRemoved += removedEdges;
-        }
-
-        if (allRemoved > getGraphHopperStorage().getAllEdges().length() / 2)
-            throw new IllegalStateException("Too many total edges were removed: " + allRemoved + ", all edges:" + getGraphHopperStorage().getAllEdges().length());
-        return allRemoved;
-    }
-
-    int removeEdges(EdgeExplorer explorer, BooleanEncodedValue accessEnc,
-            IntIndexedContainer component, int min, SubnetworkType type) {
+    protected int blockEdgesForNode(EdgeExplorer explorer, BooleanEncodedValue accessEnc, int node) {
         int removedEdges = 0;
-        if (component.size() < min) {
-            for (int i = 0; i < component.size(); i++) {
-                EdgeIterator edge = explorer.setBaseNode(component.get(i));
-                while (edge.next()) {
-                    edge.set(accessEnc, false).setReverse(accessEnc, false);
-                    try {
-                        writers.get(currentWriter).writeEdge(edge.fetchWayGeometry(3), type,
-                                edgeIdToWayId.getOsmId(edge.getEdge()), getEncoders().get(currentWriter));
-                    } catch (IOException e) {
-                        logger.catching(e);
-                        System.exit(1);
-                    }
-                    removedEdges++;
-                }
+        EdgeIterator edge = explorer.setBaseNode(node);
+        while (edge.next()) {
+            if (!edge.get(accessEnc) && !edge.getReverse(accessEnc))
+                continue;
+            edge.set(accessEnc, false).setReverse(accessEnc, false);
+            try {
+                writers.get(currentWriter).writeEdge(edge.fetchWayGeometry(FetchMode.ALL), SubnetworkType.ISLAND,
+                        edgeIdToWayId.getOsmId(edge.getEdge()), getPrepareJobs().get(currentWriter).getName());
+            } catch (IOException e) {
+                logger.catching(e);
+                System.exit(1);
             }
+            removedEdges++;
         }
-
         return removedEdges;
     }
-    
+
     public enum SubnetworkType {
         UNDEFINED,
         ISLAND,

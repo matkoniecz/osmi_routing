@@ -18,20 +18,21 @@
 
 package de.geofabrik.osmi_routing.flag_encoders;
 
+import java.util.Arrays;
 import java.util.List;
 
 import com.carrotsearch.hppc.LongArrayList;
 import com.graphhopper.reader.ReaderRelation;
 import com.graphhopper.reader.ReaderWay;
-import com.graphhopper.routing.profiles.BooleanEncodedValue;
-import com.graphhopper.routing.profiles.EncodedValue;
-import com.graphhopper.routing.profiles.EnumEncodedValue;
-import com.graphhopper.routing.profiles.SimpleBooleanEncodedValue;
-import com.graphhopper.routing.profiles.UnsignedDecimalEncodedValue;
+import com.graphhopper.routing.ev.BooleanEncodedValue;
+import com.graphhopper.routing.ev.EncodedValue;
+import com.graphhopper.routing.ev.EnumEncodedValue;
+import com.graphhopper.routing.ev.SimpleBooleanEncodedValue;
+import com.graphhopper.routing.ev.UnsignedDecimalEncodedValue;
 import com.graphhopper.routing.util.AbstractFlagEncoder;
 import com.graphhopper.routing.util.EncodingManager;
 import com.graphhopper.routing.util.EncodingManager.Access;
-import com.graphhopper.storage.GraphExtension;
+import com.graphhopper.routing.util.spatialrules.TransportationMode;
 import com.graphhopper.storage.IntsRef;
 import com.graphhopper.util.EdgeIteratorState;
 
@@ -157,8 +158,25 @@ public class AllRoadsFlagEncoder extends AbstractFlagEncoder {
 
     public AllRoadsFlagEncoder() {
         super(1, 10, 0);
-        init();
-        setBlockFords(false);
+        intendedValues.add("no");
+        intendedValues.add("restricted");
+        intendedValues.add("military");
+        intendedValues.add("emergency");
+        intendedValues.add("private");
+        intendedValues.add("yes");
+        intendedValues.add("designated");
+        intendedValues.add("official");
+        intendedValues.add("permissive");
+        restrictedValues.add("private");
+        potentialBarriers.add("gate");
+        potentialBarriers.add("lift_gate");
+        potentialBarriers.add("kissing_gate");
+        potentialBarriers.add("swing_gate");
+        potentialBarriers.add("cattle_grid");
+        absoluteBarriers.add("fence");
+        blockBarriersByDefault(false);
+        blockPrivate(false);
+        blockFords(false);
     }
 
 
@@ -174,17 +192,13 @@ public class AllRoadsFlagEncoder extends AbstractFlagEncoder {
     public void createEncodedValues(List<EncodedValue> registerNewEncodedValue, String prefix, int index) {
         // first two bits are reserved for route handling in superclass
         super.createEncodedValues(registerNewEncodedValue, prefix, index);
-        registerNewEncodedValue.add(speedEncoder = new UnsignedDecimalEncodedValue(prefix + "average_speed", speedBits, speedFactor, false));
-        registerNewEncodedValue.add(roadClassEncoder = new EnumEncodedValue<RoadClass>("road_class", RoadClass.class));
-        registerNewEncodedValue.add(privateEncoder = new SimpleBooleanEncodedValue("private_access"));
-        registerNewEncodedValue.add(areaEncoder = new SimpleBooleanEncodedValue("area"));
+        System.out.println("createEncodedValues |" + prefix + "|");
+        registerNewEncodedValue.add(avgSpeedEnc = new UnsignedDecimalEncodedValue(EncodingManager.getKey(prefix, "average_speed"), speedBits, speedFactor, false));
+        registerNewEncodedValue.add(roadClassEncoder = new EnumEncodedValue<RoadClass>(EncodingManager.getKey(prefix, "road_class"), RoadClass.class));
+        registerNewEncodedValue.add(privateEncoder = new SimpleBooleanEncodedValue(EncodingManager.getKey(prefix, "private_access")));
+        registerNewEncodedValue.add(areaEncoder = new SimpleBooleanEncodedValue(EncodingManager.getKey(prefix, "area")));
         levelEncoder = new LevelEncoder();
-        registerNewEncodedValue = levelEncoder.register(registerNewEncodedValue);
-    }
-
-    @Override
-    public long handleRelationTags(long oldRelation, ReaderRelation relation) {
-        return oldRelation;
+        registerNewEncodedValue = levelEncoder.register(registerNewEncodedValue, prefix);
     }
 
     @Override
@@ -205,7 +219,7 @@ public class AllRoadsFlagEncoder extends AbstractFlagEncoder {
     }
 
     @Override
-    public IntsRef handleWayTags(IntsRef edgeFlags, ReaderWay way, Access access, long relationFlags) {
+    public IntsRef handleWayTags(IntsRef edgeFlags, ReaderWay way, EncodingManager.Access access) {
         if (access.canSkip()) {
             return edgeFlags;
         }
@@ -216,7 +230,7 @@ public class AllRoadsFlagEncoder extends AbstractFlagEncoder {
         String route = way.getTag("route");
         RoadClass type = RoadClass.getRoadCode(highway, service, public_transport, railway, route);
         roadClassEncoder.setEnum(false, edgeFlags, type);
-        speedEncoder.setDecimal(false, edgeFlags, 10);
+        avgSpeedEnc.setDecimal(false, edgeFlags, 10);
         if (way.hasTag("access", "private") || way.hasTag("access", "no")) {
             privateEncoder.setBool(false, edgeFlags, true);
             privateEncoder.setBool(true, edgeFlags, true);
@@ -275,5 +289,10 @@ public class AllRoadsFlagEncoder extends AbstractFlagEncoder {
     @Override
     public String toString() {
         return "all_roads";
+    }
+
+    @Override
+    public TransportationMode getTransportationMode() {
+        return TransportationMode.OTHER;
     }
 }

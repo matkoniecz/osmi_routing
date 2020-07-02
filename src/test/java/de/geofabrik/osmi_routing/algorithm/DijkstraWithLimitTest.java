@@ -7,7 +7,7 @@ import org.junit.Test;
 import com.graphhopper.routing.util.EncodingManager;
 import com.graphhopper.storage.GraphBuilder;
 import com.graphhopper.storage.GraphHopperStorage;
-import com.graphhopper.util.DistanceCalc2D;
+import com.graphhopper.util.DistancePlaneProjection;
 import com.graphhopper.util.PointList;
 import com.graphhopper.util.shapes.GHPoint;
 
@@ -83,11 +83,11 @@ public class DijkstraWithLimitTest {
         GHPoint p = new GHPoint(18.5, 34.2);
         PointList pointList = makePointList(p);
         // use simple DistanceCalc2D which assumes cartesian 2D coordinates
-        double distance = new DijkstraWithLimits(graph, 100, 1, new DistanceCalc2D()).distanceOnEdge(pointList, p);
+        double distance = new DijkstraWithLimits(graph, 100, 1, new DistancePlaneProjection()).distanceOnEdge(pointList, p);
         assertEquals(0.19171417, distance, 0.000000001);
         // reverse point list
         pointList.reverse();
-        distance = new DijkstraWithLimits(graph, 100, 1, new DistanceCalc2D()).distanceOnEdge(pointList, p);
+        distance = new DijkstraWithLimits(graph, 100, 1, new DistancePlaneProjection()).distanceOnEdge(pointList, p);
         assertEquals(0.200997512, distance, 0.000000001);
     }
 }

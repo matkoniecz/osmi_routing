@@ -41,10 +41,11 @@ import com.graphhopper.storage.index.QueryResult;
 import com.graphhopper.storage.index.QueryResult.Position;
 import com.graphhopper.util.AngleCalc;
 import com.graphhopper.util.DistanceCalc;
-import com.graphhopper.util.DistanceCalc2D;
+import com.graphhopper.util.DistanceCalcEuclidean;
 import com.graphhopper.util.EdgeExplorer;
 import com.graphhopper.util.EdgeIterator;
 import com.graphhopper.util.EdgeIteratorState;
+import com.graphhopper.util.FetchMode;
 import com.graphhopper.util.Parameters;
 import com.graphhopper.util.PointList;
 import com.graphhopper.util.shapes.GHPoint;
@@ -84,7 +85,7 @@ public class UnconnectedFinder implements Runnable {
         this.encoder = encoder;
         this.maxDistance = maxDistance;
         this.angleCalc = new AngleCalc();
-        this.distanceCalc = new DistanceCalc2D();
+        this.distanceCalc = new DistanceCalcEuclidean();
         this.storage = graphhopperStorage;
         this.dijkstra = new DijkstraWithLimits(this.storage, 80, this.maxDistance);
         this.index = (LocationIndexTree) hopper.getLocationIndex();
@@ -131,7 +132,7 @@ public class UnconnectedFinder implements Runnable {
         switch (matchType) {
         case TOWER :
             int wayIndex = matched.getWayIndex();
-            PointList points = matched.getClosestEdge().fetchWayGeometry(3);
+            PointList points = matched.getClosestEdge().fetchWayGeometry(FetchMode.ALL);
             if (wayIndex == 0) {
                 matchedLat1 = points.getLat(1);
                 matchedLon1 = points.getLon(1);
@@ -141,7 +142,7 @@ public class UnconnectedFinder implements Runnable {
             }
             break;
         case EDGE:
-            PointList allPoints = matched.getClosestEdge().fetchWayGeometry(3);
+            PointList allPoints = matched.getClosestEdge().fetchWayGeometry(FetchMode.ALL);
             int matchingI = dijkstra.lowerNeighbourPillars(allPoints, matched.getSnappedPoint());
             if (matchingI < 0) {
                 long osmId = nodeInfoStore.getOsmId(openEnd.getBaseNode());
@@ -156,7 +157,7 @@ public class UnconnectedFinder implements Runnable {
         default:
             // The matched position is a pillar node.
             // Get the two neighbouring nodes.
-            PointList pointsAll = matched.getClosestEdge().fetchWayGeometry(3);
+            PointList pointsAll = matched.getClosestEdge().fetchWayGeometry(FetchMode.ALL);
             matchedLat1 = pointsAll.getLat(matched.getWayIndex() - 1);
             matchedLon1 = pointsAll.getLat(matched.getWayIndex() - 1);
             matchedLat3 = pointsAll.getLat(matched.getWayIndex() + 1);
@@ -169,7 +170,7 @@ public class UnconnectedFinder implements Runnable {
 
         double openEndLat1 = nodeAccess.getLat(openEnd.getBaseNode());
         double openEndLon1 = nodeAccess.getLon(openEnd.getBaseNode());
-        PointList pointsAll = openEnd.fetchWayGeometry(2);
+        PointList pointsAll = openEnd.fetchWayGeometry(FetchMode.PILLAR_AND_ADJ);
         // index of PointList.toGHPoint() is 0 because the PointList is retrieved without the base node
         double openEndLat2 = pointsAll.getLat(0);
         double openEndLon2 = pointsAll.getLon(0);
@@ -255,7 +256,7 @@ public class UnconnectedFinder implements Runnable {
         // Get orientation of the open end
         double openEndLat1 = storage.getNodeAccess().getLat(openEnd.getBaseNode());
         double openEndLon1 = storage.getNodeAccess().getLon(openEnd.getBaseNode());
-        PointList pointsAll = openEnd.fetchWayGeometry(2);
+        PointList pointsAll = openEnd.fetchWayGeometry(FetchMode.PILLAR_AND_ADJ);
         // index of PointList.toGHPoint() is 0 because the PointList is retrieved without the base node
         double openEndLat2 = pointsAll.getLat(0);
         double openEndLon2 = pointsAll.getLon(0);
@@ -343,8 +344,8 @@ public class UnconnectedFinder implements Runnable {
                     if (edge1.getDistance() != edge2.getDistance()) {
                         continue;
                     }
-                    PointList points = edge1.fetchWayGeometry(3);
-                    if (points.equals(edge2.fetchWayGeometry(3))) {
+                    PointList points = edge1.fetchWayGeometry(FetchMode.ALL);
+                    if (points.equals(edge2.fetchWayGeometry(FetchMode.ALL))) {
                         long wayId1 = wayIdStore.getOsmId(edge1.getEdge());
                         long wayId2 = wayIdStore.getOsmId(edge2.getEdge());
                         boolean areaInvolved = encoder.isArea(edge1) || encoder.isArea(edge2);
@@ -365,7 +366,7 @@ public class UnconnectedFinder implements Runnable {
         // location index lookup but are usually false positives. We exclude them before we later
         // check their geometric distance on the graph.
         EdgeIteratorState firstEdge = edgeIteratorStates.get(0);
-        PointList fromPoints = firstEdge.fetchWayGeometry(1);
+        PointList fromPoints = firstEdge.fetchWayGeometry(FetchMode.BASE_AND_PILLAR);
         List<Integer> neighboursOfAdjNode = new ArrayList<Integer>();
         EdgeIterator adjIter = explorer.setBaseNode(adjNode);
         while (adjIter.next()) {

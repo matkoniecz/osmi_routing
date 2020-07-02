@@ -165,7 +165,7 @@ public class GeoJSONWriter {
         close();
     }
 
-    public void writeEdge(PointList geom, RemoveAndDumpSubnetworks.SubnetworkType type, long osmId, FlagEncoder encoder) throws IOException {
+    public void writeEdge(PointList geom, RemoveAndDumpSubnetworks.SubnetworkType type, long osmId, String encoderName) throws IOException {
         StringBuilder out = new StringBuilder(900);
         if (!firstFeature) {
             out.append(",\n");
@@ -185,7 +185,7 @@ public class GeoJSONWriter {
         out.append("\", \"way_id\": ");
         out.append(osmId);
         out.append(", \"vehicle\": \"");
-        out.append(encoder.toString());
+        out.append(encoderName);
         out.append("\"}, \"geometry\":{\"type\":\"LineString\",\"coordinates\":[");
         boolean firstPoint = true;
         for (GHPoint p : geom) {

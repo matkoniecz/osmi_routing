@@ -34,11 +34,15 @@ import org.apache.logging.log4j.Logger;
 import com.graphhopper.reader.DataReader;
 import com.graphhopper.reader.osm.GraphHopperOSM;
 import com.graphhopper.reader.osm.OSMReader;
+import com.graphhopper.routing.subnetwork.PrepareRoutingSubnetworks.PrepareJob;
 import com.graphhopper.routing.util.CarFlagEncoder;
 import com.graphhopper.routing.util.EncodingManager;
 import com.graphhopper.routing.util.FlagEncoder;
+import com.graphhopper.routing.weighting.DefaultTurnCostProvider;
+import com.graphhopper.routing.weighting.TurnCostProvider;
 import com.graphhopper.storage.GraphHopperStorage;
 import com.graphhopper.util.Helper;
+import com.graphhopper.util.PMap;
 
 import de.geofabrik.osmi_routing.flag_encoders.AllRoadsFlagEncoder;
 import de.geofabrik.osmi_routing.flag_encoders.SimpleBikeFlagEncoder;
@@ -68,20 +72,18 @@ public class GraphHopperSimple extends GraphHopperOSM {
         setDataReaderFile(args.getString("input_file"));
         setGraphHopperLocation(args.getString("graph_directory"));
         doRouting = args.getBoolean("do_routing");
-        setCHEnabled(false);
         // Disable sorting of graph because that would overwrite the values stored in the additional properties field of the graph.
         setSortGraph(false);
         AllRoadsFlagEncoder encoder = new AllRoadsFlagEncoder();
-        CarFlagEncoder carEncoder = new CarFlagEncoder(2, 50, 1);
-        carEncoder.setBlockFords(false);
-        carEncoder.setBlockByDefault(false);
+        PMap carProperties = new PMap("block_private=true|block_fords=false|block_barriers=false|speed_bits=2|speed_factor=50|turn_costs=1");
+        CarFlagEncoder carEncoder = new CarFlagEncoder(carProperties);
         SimpleBikeFlagEncoder bicycleEncoder = new SimpleBikeFlagEncoder();
         outputDirectory = args.getString("output_directory");
         List<FlagEncoder> encoders = new ArrayList<FlagEncoder>(4);
         encoders.add(encoder);
         encoders.add(carEncoder);
         encoders.add(bicycleEncoder);
-        EncodingManager.Builder emBuilder = EncodingManager.createBuilder(encoders, 4);
+        EncodingManager.Builder emBuilder = EncodingManager.createBuilder(encoders);
         emBuilder.setEnableInstructions(false);
         setEncodingManager(emBuilder.build());
         double maxDistance = args.getDouble("radius");
@@ -101,17 +103,11 @@ public class GraphHopperSimple extends GraphHopperOSM {
     protected void cleanUp() {
         try {
             java.nio.file.Path outputFileNameSubnetworks = Paths.get(outputDirectory);
-            int prevNodeCount = getGraphHopperStorage().getNodes();
-            RemoveAndDumpSubnetworks preparation = new RemoveAndDumpSubnetworks(getGraphHopperStorage(), getEncodingManager().fetchEdgeEncoders(), outputFileNameSubnetworks, edgeMapping);
+            RemoveAndDumpSubnetworks preparation = RemoveAndDumpSubnetworks.build(getGraphHopperStorage(), getEncodingManager().fetchEdgeEncoders(), outputFileNameSubnetworks, edgeMapping);
             preparation.setMinNetworkSize(getMinNetworkSize());
-            preparation.setMinOneWayNetworkSize(getMinOneWayNetworkSize());
             preparation.doWork();
             preparation.close();
-            int currNodeCount = getGraphHopperStorage().getNodes();
-            logger.info("edges: " + Helper.nf(getGraphHopperStorage().getAllEdges().length()) + ", nodes " + Helper.nf(currNodeCount)
-                    + ", there were " + Helper.nf(preparation.getMaxSubnetworks())
-                    + " subnetworks. removed them => " + Helper.nf(prevNodeCount - currNodeCount)
-                    + " less nodes");
+            logger.info("nodes: " + Helper.nf(getGraphHopperStorage().getNodes()) + ", edges: " + Helper.nf(getGraphHopperStorage().getEdges()));
         } catch (IOException ex) {
             logger.catching(ex);
             System.exit(1);

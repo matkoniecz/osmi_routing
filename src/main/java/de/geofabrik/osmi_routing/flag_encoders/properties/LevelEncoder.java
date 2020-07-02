@@ -2,11 +2,11 @@ package de.geofabrik.osmi_routing.flag_encoders.properties;
 
 import java.util.List;
 
-import com.graphhopper.routing.profiles.EncodedValue;
-import com.graphhopper.routing.profiles.IntEncodedValue;
-import com.graphhopper.routing.profiles.UnsignedIntEncodedValue;
+import com.graphhopper.routing.ev.EncodedValue;
+import com.graphhopper.routing.ev.IntEncodedValue;
+import com.graphhopper.routing.ev.UnsignedIntEncodedValue;
+import com.graphhopper.routing.util.EncodingManager;
 import com.graphhopper.storage.IntsRef;
-import com.graphhopper.util.EdgeIteratorState;
 
 
 public class LevelEncoder {
@@ -39,9 +39,9 @@ public class LevelEncoder {
         levelDiffEncoder.init(new EncodedValue.InitializerConfig());
     }
 
-    public List<EncodedValue> register(List<EncodedValue> encodedValues) {
-        encodedValues.add(minLevelEncoder = new UnsignedIntEncodedValue("min_level", levelBits, true));
-        encodedValues.add(levelDiffEncoder = new UnsignedIntEncodedValue("level_diff", 1, true));
+    public List<EncodedValue> register(List<EncodedValue> encodedValues, String prefix) {
+        encodedValues.add(minLevelEncoder = new UnsignedIntEncodedValue(EncodingManager.getKey(prefix, "min_level"), levelBits, true));
+        encodedValues.add(levelDiffEncoder = new UnsignedIntEncodedValue(EncodingManager.getKey(prefix, "level_diff"), 1, true));
         return encodedValues;
     }
 

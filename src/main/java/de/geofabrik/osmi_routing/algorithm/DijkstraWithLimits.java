@@ -8,6 +8,7 @@ import com.graphhopper.util.DistancePlaneProjection;
 import com.graphhopper.util.EdgeExplorer;
 import com.graphhopper.util.EdgeIterator;
 import com.graphhopper.util.EdgeIteratorState;
+import com.graphhopper.util.FetchMode;
 import com.graphhopper.util.PointList;
 import com.graphhopper.util.shapes.GHPoint;
 
@@ -110,7 +111,7 @@ public class DijkstraWithLimits {
 
     public Result routeBetweenPillars(int fromNodeId, EdgeIteratorState destinationEdge, GHPoint destinationLocation) {
         // find neighbour pillars first
-        PointList geometry = destinationEdge.fetchWayGeometry(3);
+        PointList geometry = destinationEdge.fetchWayGeometry(FetchMode.ALL);
         int neighbour1Index = lowerNeighbourPillars(geometry, destinationLocation);
         GHPoint neighbour1 = geometry.get(neighbour1Index);
         GHPoint neighbour2 = geometry.get(neighbour1Index + 1);
@@ -145,11 +146,11 @@ public class DijkstraWithLimits {
         double distanceToBase = Double.MAX_VALUE;
         double distanceToAdj = Double.MAX_VALUE;
         if (resultToBase.status == Status.OK) {
-            distanceToBase = distanceOnEdge(destinationEdge.fetchWayGeometry(3), destinationLocation);
+            distanceToBase = distanceOnEdge(destinationEdge.fetchWayGeometry(FetchMode.ALL), destinationLocation);
         }
         EdgeIteratorState destinationEdgeReverse = storage.getEdgeIteratorState(destinationEdge.getEdge(), destinationEdge.getBaseNode());
         if (resultToAdj.status == Status.OK) {
-            distanceToAdj = distanceOnEdge(destinationEdgeReverse.fetchWayGeometry(3), destinationLocation);
+            distanceToAdj = distanceOnEdge(destinationEdgeReverse.fetchWayGeometry(FetchMode.ALL), destinationLocation);
         }
         if (distanceToBase < distanceToAdj) {
             resultToBase.distance += distanceToBase;
