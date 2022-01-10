@@ -42,6 +42,8 @@ public class NoExitHook extends OSMReaderHook {
         noExit |= (entranceValue != null && !entranceValue.equals("no"));
         String amenity = node.getTag("amenity");
         noExit |= (amenity != null && amenity.equals("parking_entrance"));
+        String tourismValue = node.getTag("tourism");
+        noExit |= (tourismValue != null && tourismValue.equals("viewpoint"));
         if (noExit) {
             noExitNodes.add(node.getId());
         }
